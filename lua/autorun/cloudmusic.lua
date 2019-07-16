@@ -164,6 +164,31 @@ if CLIENT then
                 transLrc = json["lyric"]["tlrc"]
             end, function()notification.AddLegacy("无法获取 "..currentPlaying.Name.." 的歌词", NOTIFY_ERROR, 3) end)
         end
+        local function SongEnded()
+            if currentMode == "ListLoop" then
+                CloudMusic:Next()
+            elseif currentMode == "List" then
+                local last = false
+                for i=1,#CloudMusic.Songs do
+                    local song = CloudMusic.Songs[i]
+                    if song.ID == CloudMusic.CurrentPlaying.ID then
+                        if i == #CloudMusic.Songs then
+                            last = true
+                        end
+                        break
+                    end
+                end
+                if not last then
+                    CloudMusic:Next()
+                end
+            elseif currentMode == "Random" then
+                CloudMusic:Play(math.random(1, #CloudMusic.Songs))
+            elseif currentMode == "SingleLoop" then
+                lrcStartPos = 1
+                transLrcStartPos = 1
+                CloudMusic.CurrentChannel:Play()
+            end
+        end
         local function SendSyncData()
             if LocalPlayer():GetPData("CloudMusic3D","false") ~= "true" then return end
             net.Start("CloudMusic3DSync")
@@ -1052,7 +1077,7 @@ if CLIENT then
             draw.DrawText("主色调", "CloudMusicSmallTitle", 5, 112, Color(0,0,0))
             draw.DrawText("副色调", "CloudMusicSmallTitle", 160, 112, Color(0,0,0))
             draw.DrawText("本播放器由Texas制作，感谢淡定WackoD在界面开发遇到一个问题时的提示\n歌词功能使用了自有服务器进行简化处理", "CloudMusicText", w/2, h-64, Color(0,0,0), TEXT_ALIGN_CENTER)
-            draw.DrawText("版本 1.1.2", "CloudMusicText", 5, winh-49, Color(0,0,0))
+            draw.DrawText("版本 1.2.1", "CloudMusicText", 5, winh-49, Color(0,0,0))
         end
         function CloudMusic.Settings:Think()
             if currentShowingPage == "Main" and (self:GetPos()) < winw then
@@ -1246,27 +1271,7 @@ if CLIENT then
         end)
         hook.Add("Think","CloudMusic_Think",function()
             if IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetTime() == CloudMusic.CurrentChannel:GetLength() then
-                if currentMode == "ListLoop" then
-                    CloudMusic:Next()
-                elseif currentMode == "List" then
-                    local last = false
-                    for i=1,#CloudMusic.Songs do
-                        local song = CloudMusic.Songs[i]
-                        if song.ID == CloudMusic.CurrentPlaying.ID then
-                            if i == #CloudMusic.Songs then
-                                last = true
-                            end
-                            break
-                        end
-                    end
-                    if not last then
-                        CloudMusic:Next()
-                    end
-                elseif currentMode == "Random" then
-                    CloudMusic:Play(math.random(1, #CloudMusic.Songs))
-                elseif currentMode == "SingleLoop" then
-                    CloudMusic.CurrentChannel:Play()
-                end
+                SongEnded()
             end
             local players = player.GetAll()
             for i=1,#players do
