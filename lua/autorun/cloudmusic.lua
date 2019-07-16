@@ -207,6 +207,13 @@ if CLIENT then
                 end
             end
         end
+        if not CloudMusicRegisteredCAMI and CAMI then
+            CloudMusicRegisteredCAMI = true
+            CAMI.RegisterPrivilege({
+                ["Name"] = "CloudMusic3D",
+                ["MinAccess"] = "user"
+            })
+        end
         CloudMusic = vgui.Create("DFrame")
         CloudMusic:ShowCloseButton(false)
         CloudMusic:SetTitle("")
@@ -1040,7 +1047,7 @@ if CLIENT then
             draw.DrawText("主色调", "CloudMusicSmallTitle", 5, 112, Color(0,0,0))
             draw.DrawText("副色调", "CloudMusicSmallTitle", 160, 112, Color(0,0,0))
             draw.DrawText("本播放器由Texas制作，感谢淡定WackoD在界面开发遇到一个问题时的提示\n歌词功能使用了自有服务器进行简化处理", "CloudMusicText", w/2, h-64, Color(0,0,0), TEXT_ALIGN_CENTER)
-            draw.DrawText("版本 1.0", "CloudMusicText", 5, winh-49, Color(0,0,0))
+            draw.DrawText("版本 1.1", "CloudMusicText", 5, winh-49, Color(0,0,0))
         end
         function CloudMusic.Settings:Think()
             if currentShowingPage == "Main" and (self:GetPos()) < winw then
@@ -1101,12 +1108,34 @@ if CLIENT then
         end
         CloudMusic.Settings.A3D = vgui.Create("DCheckBox",CloudMusic.Settings)
         CloudMusic.Settings.A3D:SetPos(120,30)
-        CloudMusic.Settings.A3D:SetChecked(LocalPlayer():GetPData("CloudMusic3D","false") == "true")
+        if ULib and ULib.ucl.query(LocalPlayer(),"cloudmusic3d") then
+            CloudMusic.Settings.A3D:SetChecked(LocalPlayer():GetPData("CloudMusic3D","false") == "true")
+        else
+            CloudMusic.Settings.A3D:SetChecked(false)
+        end
         function CloudMusic.Settings.A3D:OnChange(val)
+            if ULib and not ULib.ucl.query(LocalPlayer(),"cloudmusic3d") and val then
+                Derma_Message("你没有权限开启外放", "无权限", "好的")
+                self:SetChecked(false)
+                return
+            end
             LocalPlayer():SetPData("CloudMusic3D", val)
             if val then
                 SendSyncData()
             else
+                net.Start("CloudMusic3DSync")
+                net.WriteEntity(LocalPlayer())
+                net.WriteBool(false)
+                net.WriteInt(-1,32)
+                net.WriteFloat(0)
+                net.WriteString("")
+                net.WriteFloat(0)
+                net.SendToServer()
+            end
+        end
+        function CloudMusic.Settings.A3D:Think()
+            if ULib and not ULib.ucl.query(LocalPlayer(),"cloudmusic3d") then
+                self:SetChecked(false)
                 net.Start("CloudMusic3DSync")
                 net.WriteEntity(LocalPlayer())
                 net.WriteBool(false)
@@ -1334,6 +1363,7 @@ if SERVER then
         local volume = net.ReadFloat()
         local id = net.ReadString()
         local time = net.ReadFloat()
+        if ULib and not ULib.ucl.query(p,"cloudmusic3d") and valid then return end
         net.Start("CloudMusic3DSync")
         net.WriteEntity(p)
         net.WriteBool(valid)
@@ -1343,5 +1373,9 @@ if SERVER then
         net.WriteFloat(time)
         net.Broadcast()
     end)
+    if not CloudMusicRegisteredULib and ULib then
+        CloudMusicRegisteredULib = true
+        ULib.ucl.registerAccess("cloudmusic3d","user","允许玩家使用3D外放功能","网易云音乐")
+    end
     HookKey()
 end

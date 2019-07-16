@@ -1,5 +1,9 @@
 {
     "title":"网易云音乐播放器",
     "type":"ServerContent",
-    "tags":["fun"]
+    "tags":["fun"],
+    "ignore":[
+        "LICENSE",
+        ".git/*"
+    ]
 }
