@@ -983,7 +983,7 @@ if CLIENT then
                         if not IsValid(CloudMusic.CurrentChannel) then
                             break
                         end
-                        if i == #lrc or lrc[i+1].Time > CloudMusic.CurrentChannel:GetTime() then
+                        if i == #lrc or lrc[i+1].Time > CloudMusic.CurrentChannel:GetTime()*1000 then
                             mainLrc = line.Value
                             if transLrc == nil and i ~= #lrc then
                                 subLrc = lrc[i+1].Value
@@ -998,7 +998,7 @@ if CLIENT then
                             if not IsValid(CloudMusic.CurrentChannel) then
                                 break
                             end
-                            if i == #lrc or lrc[i+1].Time > CloudMusic.CurrentChannel:GetTime() then
+                            if i == #lrc or lrc[i+1].Time > CloudMusic.CurrentChannel:GetTime()*1000 then
                                 subLrc = line.Value
                                 transLrcStartPos = i
                                 break
