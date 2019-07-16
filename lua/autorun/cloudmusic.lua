@@ -226,7 +226,7 @@ if CLIENT then
             if msg ~= "" then draw.DrawText(msg, "CloudMusicText", 110, 13, GetMainColor()) end
         end
         function CloudMusic:Think()
-            if not input.IsMouseDown(MOUSE_LEFT) then
+            if not input.IsMouseDown(MOUSE_LEFT) and (CloudMusic.Dragging or isProgDragging or isVolDragging) then
                 CloudMusic.Dragging = false
                 isProgDragging = false
                 isVolDragging = false
@@ -1035,6 +1035,11 @@ if CLIENT then
         CloudMusic.Settings = vgui.Create("DPanel",CloudMusic)
         CloudMusic.Settings:SetPos(winw,30)
         CloudMusic.Settings:SetSize(winw,winh-30)
+        function CloudMusic.Settings:OnMousePressed(key)
+            if key == MOUSE_LEFT then
+
+            end
+        end
         function CloudMusic.Settings:Paint(w,h)
             draw.DrawText("设置", "CloudMusicSubTitle", 5, 5, Color(0,0,0))
             draw.DrawText("显示界面内频谱", "CloudMusicText", 25, 30, Color(0,0,0))
@@ -1047,7 +1052,9 @@ if CLIENT then
             draw.DrawText("主色调", "CloudMusicSmallTitle", 5, 112, Color(0,0,0))
             draw.DrawText("副色调", "CloudMusicSmallTitle", 160, 112, Color(0,0,0))
             draw.DrawText("本播放器由Texas制作，感谢淡定WackoD在界面开发遇到一个问题时的提示\n歌词功能使用了自有服务器进行简化处理", "CloudMusicText", w/2, h-64, Color(0,0,0), TEXT_ALIGN_CENTER)
-            draw.DrawText("版本 1.1", "CloudMusicText", 5, winh-49, Color(0,0,0))
+            draw.DrawText("版本 1.1.1", "CloudMusicText", 5, winh-49, Color(0,0,0))
+            draw.RoundedBox(2.5, 120, 87.5, 150, 5, Color(226,226,226))
+
         end
         function CloudMusic.Settings:Think()
             if currentShowingPage == "Main" and (self:GetPos()) < winw then
@@ -1337,6 +1344,10 @@ if SERVER then
         util.AddNetworkString("CloudMusicKeyDown")
         util.AddNetworkString("CloudMusic3DSync")
         util.AddNetworkString("CloudMusicReqSync")
+        if not CloudMusicRegisteredULib and ULib then
+            CloudMusicRegisteredULib = true
+            ULib.ucl.registerAccess("cloudmusic3d","user","允许玩家使用3D外放功能","网易云音乐")
+        end
     end
     hook.Add("InitPostEntity", "CloudMusic_Init", HookKey)
     hook.Add("PlayerButtonDown", "CloudMusic_KeyPress", function(ply,btn)
@@ -1373,9 +1384,5 @@ if SERVER then
         net.WriteFloat(time)
         net.Broadcast()
     end)
-    if not CloudMusicRegisteredULib and ULib then
-        CloudMusicRegisteredULib = true
-        ULib.ucl.registerAccess("cloudmusic3d","user","允许玩家使用3D外放功能","网易云音乐")
-    end
     HookKey()
 end
