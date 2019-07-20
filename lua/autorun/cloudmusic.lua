@@ -1,10 +1,10 @@
 if CLIENT then
+    print("===========================\n")
+    print("    Cloud Music for LUA    \n")
+    print("         By  Texas         \n")
+    print("===========================")
     local function Init()
-        print("===========================\n")
-        print("    Cloud Music for LUA    \n")
-        print("         By  Texas         \n")
-        print("===========================")
-        if CloudMusic ~= nil and CloudMusic.Remove then
+        if CloudMusic and CloudMusic.Remove then
             local players = player.GetAll()
             for i=1,#players do
                 local p = players[i]
@@ -16,11 +16,52 @@ if CLIENT then
             if CloudMusic.CurrentChannel then
                 CloudMusic.CurrentChannel:Stop()
             end
-            if CloudMusic.HUD ~= nil and CloudMusic.HUD.Remove then
+            if CloudMusic.HUD and CloudMusic.HUD.Remove then
                 CloudMusic.HUD:Remove()
             end
             CloudMusic:Remove()
             CloudMusic = nil
+        end
+        local settings = {
+            ["CloudMusicPlayMode"] = "ListLoop",
+            ["CloudMusicAnimation"] = "true",
+            ["CloudMusic3D"] = "false",
+            ["CloudMusicLyric"] = "true",
+            ["CloudMusicBypass3D"] = "false",
+            ["CloudMusicFFT"] = "true",
+            ["CloudMusicHUDFFT"] = "false",
+            ["CloudMusicVolume"] = "1",
+            ["CloudMusicMainRed"] = "255",
+            ["CloudMusicMainGreen"] = "255",
+            ["CloudMusicMainBlue"] = "255",
+            ["CloudMusicSubRed"] = "102",
+            ["CloudMusicSubGreen"] = "204",
+            ["CloudMusicSubBlue"] = "255"
+        }
+        local defaultKeys = table.GetKeys(settings)
+        if not file.Exists("cloudmusic.dat", "DATA") then
+            file.Write("cloudmusic.dat", util.TableToJSON(settings))
+        else
+            local json = util.JSONToTable(file.Read("cloudmusic.dat"))
+            if not json then
+                file.Write("cloudmusic.dat", util.TableToJSON(settings))
+            else
+                local jsonKeys = table.GetKeys(json)
+                for i=1,#jsonKeys do
+                    if not table.HasValue(defaultKeys, jsonKeys[i]) then
+                        table.remove(json, i)
+                    end
+                end
+                table.Merge(settings, json)
+            end
+        end
+        local function GetSettings(name)
+            return settings[name]
+        end
+        local function SetSettings(name,value)
+            settings[name] = tostring(value)
+            file.Write("cloudmusic.dat", util.TableToJSON(settings))
+            return value
         end
         surface.CreateFont("CloudMusicTitle", {
             font = "Microsoft YaHei",
@@ -92,30 +133,32 @@ if CLIENT then
         })
         local winw,winh = ScrW()*0.8,ScrH()*0.7
         local targetOpacity = 0
+        local isDragging = false
         local isProgDragging = false
         local isVolDragging = false
         local lrc = nil
         local transLrc = nil
         local currentShowingPage = "Main"
-        local currentMode = LocalPlayer():GetPData("CloudMusicMode","ListLoop")
+        local currentMode = GetSettings("CloudMusicPlayMode")
         local slideAnimPix = winw/10
         local msg = ""
         local lrcStartPos = 1
         local transLrcStartPos = 1
+        local errorCount = 0
         local function TextMessage(str)
             msg = str
             timer.Simple(10, function()msg = "" end)
         end
         local function GetMainColor()
-            local r = tonumber(LocalPlayer():GetPData("CloudMusicMainRed","255")) or 255
-            local g = tonumber(LocalPlayer():GetPData("CloudMusicMainGreen","255")) or 255
-            local b = tonumber(LocalPlayer():GetPData("CloudMusicMainBlue","255")) or 255
+            local r = tonumber(GetSettings("CloudMusicMainRed")) or 255
+            local g = tonumber(GetSettings("CloudMusicMainGreen")) or 255
+            local b = tonumber(GetSettings("CloudMusicMainBlue")) or 255
             return Color(r,g,b)
         end
         local function SetMainColor(r,g,b)
-            LocalPlayer():SetPData("CloudMusicMainRed",r)
-            LocalPlayer():SetPData("CloudMusicMainGreen",g)
-            LocalPlayer():SetPData("CloudMusicMainBlue",b)
+            SetSettings("CloudMusicMainRed",r)
+            SetSettings("CloudMusicMainGreen",g)
+            SetSettings("CloudMusicMainBlue",b)
             if CloudMusic.HUD.Ready then
                 CloudMusic.HUD:RunJavascript([[
                     setMainColor(]]..r..[[,]]..g..[[,]]..b..[[);
@@ -123,15 +166,15 @@ if CLIENT then
             end
         end
         local function GetSubColor()
-            local r = tonumber(LocalPlayer():GetPData("CloudMusicSubRed","102")) or 102
-            local g = tonumber(LocalPlayer():GetPData("CloudMusicSubGreen","204")) or 204
-            local b = tonumber(LocalPlayer():GetPData("CloudMusicSubBlue","255")) or 255
+            local r = tonumber(GetSettings("CloudMusicSubRed")) or 102
+            local g = tonumber(GetSettings("CloudMusicSubGreen")) or 204
+            local b = tonumber(GetSettings("CloudMusicSubBlue")) or 255
             return Color(r,g,b)
         end
         local function SetSubColor(r,g,b)
-            LocalPlayer():SetPData("CloudMusicSubRed",r)
-            LocalPlayer():SetPData("CloudMusicSubGreen",g)
-            LocalPlayer():SetPData("CloudMusicSubBlue",b)
+            SetSettings("CloudMusicSubRed",r)
+            SetSettings("CloudMusicSubGreen",g)
+            SetSettings("CloudMusicSubBlue",b)
             if CloudMusic.HUD.Ready then
                 CloudMusic.HUD:RunJavascript([[
                     setSubColor(]]..r..[[,]]..g..[[,]]..b..[[);
@@ -142,12 +185,12 @@ if CLIENT then
             local currentPlaying = CloudMusic.CurrentPlaying
             lrc = nil
             transLrc = nil
-            if LocalPlayer():GetPData("CloudMusicLyric","true") ~= "true" then return end
+            if GetSettings("CloudMusicLyric") ~= "true" then return end
             lrcStartPos = 1
             transLrcStartPos = 1
-            http.Fetch("http://129.204.91.119:21340/NeteaseLyric.aspx?song="..CloudMusic.CurrentPlaying.ID, function(body)
+            http.Fetch("http://texaservice.tk:21340/NeteaseLyric.aspx?song="..CloudMusic.CurrentPlaying.ID, function(body)
                 local json = util.JSONToTable(body)
-                if json == nil then
+                if not json then
                     notification.AddLegacy("无法获取 "..currentPlaying.Name.." 的歌词", NOTIFY_ERROR, 3)
                     return
                 end
@@ -155,7 +198,7 @@ if CLIENT then
                     notification.AddLegacy("无法获取 "..currentPlaying.Name.." 的歌词（"..json["msg"].."）", NOTIFY_ERROR, 3)
                     return
                 end
-                if json["lyric"] == nil then
+                if not json["lyric"] then
                     notification.AddLegacy("歌曲 "..currentPlaying.Name.." 暂无歌词", NOTIFY_GENERIC, 3)
                     return
                 end
@@ -190,7 +233,7 @@ if CLIENT then
             end
         end
         local function SendSyncData()
-            if LocalPlayer():GetPData("CloudMusic3D","false") ~= "true" then return end
+            if GetSettings("CloudMusic3D") ~= "true" then return end
             net.Start("CloudMusic3DSync")
             net.WriteEntity(LocalPlayer())
             net.WriteBool(IsValid(CloudMusic.CurrentChannel))
@@ -217,7 +260,7 @@ if CLIENT then
         function ToggleCloudMusic()
             if CloudMusic:IsVisible() then
                 targetOpacity = 0
-                if LocalPlayer():GetPData("CloudMusicAnimation","true") ~= "true" then
+                if GetSettings("CloudMusicAnimation") ~= "true" then
                     CloudMusic:SetAlpha(0)
                     CloudMusic:SetVisible(false)
                 end
@@ -225,19 +268,12 @@ if CLIENT then
                 CloudMusic:MakePopup()
                 CloudMusic:SetVisible(true)
                 targetOpacity = 255
-                if LocalPlayer():GetPData("CloudMusicAnimation","true") == "true" then
+                if GetSettings("CloudMusicAnimation") == "true" then
                     CloudMusic:SetAlpha(1)
                 else
                     CloudMusic:SetAlpha(255)
                 end
             end
-        end
-        if not CloudMusicRegisteredCAMI and CAMI then
-            CloudMusicRegisteredCAMI = true
-            CAMI.RegisterPrivilege({
-                ["Name"] = "CloudMusic3D",
-                ["MinAccess"] = "user"
-            })
         end
         CloudMusic = vgui.Create("DFrame")
         CloudMusic:ShowCloseButton(false)
@@ -250,14 +286,16 @@ if CLIENT then
             draw.DrawText("网易云音乐", "CloudMusicTitle", 5, 3, GetMainColor())
             if msg ~= "" then draw.DrawText(msg, "CloudMusicText", 110, 13, GetMainColor()) end
         end
+        local dragStartX = 0
+        local dragStartY = 0
         function CloudMusic:Think()
-            if not input.IsMouseDown(MOUSE_LEFT) and (CloudMusic.Dragging or isProgDragging or isVolDragging) then
-                CloudMusic.Dragging = false
+            if not input.IsMouseDown(MOUSE_LEFT) and (isDragging or isProgDragging or isVolDragging) then
+                isDragging = false
                 isProgDragging = false
                 isVolDragging = false
                 SendSyncData()
             end
-            if LocalPlayer():GetPData("CloudMusicAnimation","true") == "true" then
+            if GetSettings("CloudMusicAnimation") == "true" then
                 if CloudMusic:GetAlpha() == 0 and targetOpacity == 0 then
                     CloudMusic:SetVisible(false)
                 end
@@ -273,9 +311,9 @@ if CLIENT then
                     end
                 end
             end
-            if CloudMusic.Dragging then
+            if isDragging then
                 local cx,cy = gui.MouseX(),gui.MouseY()
-                CloudMusic:SetPos(cx-CloudMusic.StartX,cy-CloudMusic.StartY)
+                CloudMusic:SetPos(cx-dragStartX,cy-dragStartY)
             end
         end
         function CloudMusic:OnKeyCodePressed(key)
@@ -286,13 +324,13 @@ if CLIENT then
         function CloudMusic:OnMousePressed(key)
             local x,y = self:LocalCursorPos()
             if key == MOUSE_LEFT and y <= 30 then
-                CloudMusic.Dragging = true
-                CloudMusic.StartX = x
-                CloudMusic.StartY = y
+                isDragging = true
+                dragStartX = x
+                dragStartY = y
             end
         end
         function CloudMusic:OnMouseReleased(key)
-            CloudMusic.Dragging = false
+            isDragging = false
         end
         CloudMusic:SetSize(winw, winh)
         CloudMusic:SetPos(ScrW()/2-winw/2,ScrH()/2-winh/2)
@@ -317,13 +355,13 @@ if CLIENT then
         end
         function CloudMusic.Body:Think()
             if currentShowingPage == "Settings" and (self:GetPos()) > -winw then
-                if LocalPlayer():GetPData("CloudMusicAnimation","true") == "true" then
+                if GetSettings("CloudMusicAnimation") == "true" then
                     self:SetPos((self:GetPos()-slideAnimPix),30)
                 else
                     self:SetPos(-winw,30)
                 end
             elseif currentShowingPage == "Main" and (self:GetPos()) ~= 0 then
-                if LocalPlayer():GetPData("CloudMusicAnimation","true") == "true" then
+                if GetSettings("CloudMusicAnimation") == "true" then
                     self:SetPos((self:GetPos()+slideAnimPix),30)
                     if (self:GetPos()) > 0 then self:SetPos(0,30) end
                 else
@@ -342,7 +380,7 @@ if CLIENT then
         end
         CloudMusic.SonglistForm = vgui.Create("DPanel",CloudMusic.Body)
         CloudMusic.SonglistForm:SetPos(5,5)
-        CloudMusic.SonglistForm:SetSize(100,34)
+        CloudMusic.SonglistForm:SetSize(102,34)
         CloudMusic.SonglistForm:SetDrawBackground(false)
         function CloudMusic.SonglistForm:Paint(w,h)
             draw.DrawText("歌单ID","CloudMusicText",0,0,Color(0,0,0))
@@ -351,13 +389,13 @@ if CLIENT then
         CloudMusic.SonglistForm.Input:SetPos(0,14)
         CloudMusic.SonglistForm.Input:SetNumeric(true)
         CloudMusic.SonglistForm.Fetch = vgui.Create("DButton",CloudMusic.SonglistForm)
-        CloudMusic.SonglistForm.Fetch:SetPos(65,14)
+        CloudMusic.SonglistForm.Fetch:SetPos(67,14)
         CloudMusic.SonglistForm.Fetch:SetSize(30,20)
         CloudMusic.SonglistForm.Fetch:SetText("获取")
         CloudMusic.SonglistForm.Fetch:SetColor(Color(255,255,255))
         CloudMusic.SonglistForm.Fetch.DoClick = function()
             local success,songlist = xpcall(function()return CloudMusic.SonglistForm.Input:GetInt() end,function() end)
-            if not success or songlist == nil then
+            if not success or not songlist then
                 Derma_Message("请输入正确的歌单ID", "错误", "好的")
                 return
             end
@@ -384,10 +422,11 @@ if CLIENT then
                         end
                         artist = artist .. track["artists"][j]["name"]
                     end
-                    CloudMusic.Songlist:AddLine(track["name"],artist,track["id"])
+                    CloudMusic.Songlist:AddLine(track["name"],artist,track["album"]["name"],track["id"])
                     table.insert(CloudMusic.Songs,{
                         Name = track["name"],
                         Artist = artist,
+                        Album = track["album"]["name"],
                         ID = track["id"],
                         Thumbnail = track["album"]["picUrl"]
                     })
@@ -421,7 +460,7 @@ if CLIENT then
                 ["limit"] = "100"
             }, function(body)
                 local json = util.JSONToTable(body)
-                if json == nil or json["code"] ~= 200 then
+                if not json or json["code"] ~= 200 then
                     Derma_Message("搜索失败", "错误", "好的")
                     return
                 end
@@ -452,10 +491,11 @@ if CLIENT then
                         end
                         artist = artist .. track["artists"][j]["name"]
                     end
-                    CloudMusic.Songlist:AddLine(track["name"],artist,track["id"])
+                    CloudMusic.Songlist:AddLine(track["name"],artist,track["album"]["name"],track["id"])
                     table.insert(CloudMusic.Songs,{
                         Name = track["name"],
                         Artist = artist,
+                        Album = track["album"]["name"],
                         ID = track["id"],
                         Thumbnail = track["album"]["picUrl"]
                     })
@@ -475,7 +515,7 @@ if CLIENT then
             if offset == 0 then return end
             http.Fetch("http://music.163.com/api/search/pc?s="..CloudMusic.SearchForm.Input:GetValue().."&type=1&limit=100&offset="..offset-100, function(body)
                 local json = util.JSONToTable(body)
-                if json == nil or json["code"] ~= 200 then
+                if not json or json["code"] ~= 200 then
                     Derma_Message("换页失败", "错误", "好的")
                 end
                 CloudMusic.NextPage:SetDisabled(false)
@@ -496,10 +536,11 @@ if CLIENT then
                         end
                         artist = artist .. track["artists"][j]["name"]
                     end
-                    CloudMusic.Songlist:AddLine(track["name"],artist,track["id"])
+                    CloudMusic.Songlist:AddLine(track["name"],artist,track["album"]["name"],track["id"])
                     table.insert(CloudMusic.Songs,{
                         Name = track["name"],
                         Artist = artist,
+                        Album = track["album"]["name"],
                         ID = track["id"],
                         Thumbnail = track["album"]["picUrl"]
                     })
@@ -519,7 +560,7 @@ if CLIENT then
             if offset+100 > songCount then return end
             http.Fetch("http://music.163.com/api/search/pc?s="..CloudMusic.SearchForm.Input:GetValue().."&type=1&limit=100&offset="..offset+100, function(body)
                 local json = util.JSONToTable(body)
-                if json == nil or json["code"] ~= 200 then
+                if not json or json["code"] ~= 200 then
                     Derma_Message("换页失败", "错误", "好的")
                 end
                 CloudMusic.PrevPage:SetDisabled(false)
@@ -540,10 +581,11 @@ if CLIENT then
                         end
                         artist = artist .. track["artists"][j]["name"]
                     end
-                    CloudMusic.Songlist:AddLine(track["name"],artist,track["id"])
+                    CloudMusic.Songlist:AddLine(track["name"],artist,track["album"]["name"],track["id"])
                     table.insert(CloudMusic.Songs,{
                         Name = track["name"],
                         Artist = artist,
+                        Album = track["album"]["name"],
                         ID = track["id"],
                         Thumbnail = track["album"]["picUrl"]
                     })
@@ -556,6 +598,7 @@ if CLIENT then
         CloudMusic.Songlist = vgui.Create("DListView",CloudMusic.Body)
         CloudMusic.Songlist:AddColumn("歌曲名")
         CloudMusic.Songlist:AddColumn("歌手")
+        CloudMusic.Songlist:AddColumn("专辑")
         CloudMusic.Songlist:AddColumn("歌曲ID"):SetMaxWidth(100)
         CloudMusic.Songlist:SetMultiSelect(false)
         CloudMusic.Songlist:SetPos(5,44)
@@ -568,10 +611,10 @@ if CLIENT then
                 notification.AddLegacy("歌曲列表为空", NOTIFY_GENERIC, 3)
                 return
             end
-            if id ~= nil and CloudMusic.Songs[id] ~= nil then
+            if id and CloudMusic.Songs[id] then
                 CloudMusic.CurrentPlaying = CloudMusic.Songs[id]
             end
-            if CloudMusic.CurrentPlaying == nil then
+            if not CloudMusic.CurrentPlaying then
                 CloudMusic.CurrentPlaying = CloudMusic.Songs[1]
             end
             CloudMusic.Player.Thumbnail:SetHTML([[
@@ -586,12 +629,16 @@ if CLIENT then
             ]])
             if IsValid(CloudMusic.CurrentChannel) then
                 CloudMusic.CurrentChannel:Stop()
+                CloudMusic.CurrentChannel = nil
             end
-            sound.PlayURL("https://music.163.com/song/media/outer/url?id="..CloudMusic.CurrentPlaying.ID..".mp3", "noblock", function(station)
+            local cId = CloudMusic.CurrentPlaying.ID
+            sound.PlayURL("https://music.163.com/song/media/outer/url?id="..cId..".mp3", "noblock", function(station)
                 if IsValid(station) then
-                    station:Play()
-                    CloudMusic.CurrentChannel = station
-                    FetchLyric()
+                    if CloudMusic.CurrentPlaying.ID == cId and not IsValid(CloudMusic.CurrentChannel) then
+                        station:Play()
+                        CloudMusic.CurrentChannel = station
+                        FetchLyric()
+                    end
                 else
                     notification.AddLegacy("无法播放 "..CloudMusic.CurrentPlaying.Name, NOTIFY_ERROR, 3)
                     if currentMode == "ListLoop" then
@@ -621,7 +668,7 @@ if CLIENT then
             end)
         end
         function CloudMusic:Next()
-            if CloudMusic.CurrentPlaying ~= nil and #CloudMusic.Songs ~= 0 then
+            if CloudMusic.CurrentPlaying and #CloudMusic.Songs ~= 0 then
                 local found = false
                 for i=1,#CloudMusic.Songs do
                     local song = CloudMusic.Songs[i]
@@ -643,7 +690,7 @@ if CLIENT then
             end
         end
         function CloudMusic:Prev()
-            if CloudMusic.CurrentPlaying ~= nil and #CloudMusic.Songs ~= 0 then
+            if CloudMusic.CurrentPlaying and #CloudMusic.Songs ~= 0 then
                 local found = false
                 for i=1,#CloudMusic.Songs do
                     local song = CloudMusic.Songs[i]
@@ -665,17 +712,15 @@ if CLIENT then
             end
         end
         CloudMusic.Player = vgui.Create("DPanel", CloudMusic.Body)
-        CloudMusic.Volume = tonumber(LocalPlayer():GetPData("CloudMusicVolume","1")) or 1
+        CloudMusic.Volume = tonumber(GetSettings("CloudMusicVolume")) or 1
         CloudMusic.Player:SetPos(5,49+(winh-149))
         CloudMusic.Player:SetSize(winw-10,winh-44-(winh-149)-40)
         CloudMusic.Player.Thumbnail = vgui.Create("DHTML",CloudMusic.Player)
         CloudMusic.Player.Thumbnail:SetSize(CloudMusic.Player:GetTall(),CloudMusic.Player:GetTall())
         function CloudMusic.Player:Paint(w,h)
             local left = winh-44-(winh-149)-35
-            if CloudMusic.CurrentPlaying == nil then
-                return
-            end
-            if IsValid(CloudMusic.CurrentChannel) and LocalPlayer():GetPData("CloudMusicFFT","true") == "true" then
+            if not CloudMusic.CurrentPlaying then return end
+            if IsValid(CloudMusic.CurrentChannel) and GetSettings("CloudMusicFFT") == "true" then
                 local samples = {}
                 local count = CloudMusic.CurrentChannel:FFT(samples,FFT_256)
                 local width = ((w-(winh-44-(winh-149)+155)-130)-count*1+1)/count
@@ -740,9 +785,9 @@ if CLIENT then
                     percent = 1
                 end
                 CloudMusic.Volume = percent
-                LocalPlayer():SetPData("CloudMusicVolume",percent)
+                SetSettings("CloudMusicVolume",percent)
             end
-            if CloudMusic.CurrentPlaying == nil then
+            if not CloudMusic.CurrentPlaying then
                 CloudMusic.Player.Prev:SetVisible(false)
                 CloudMusic.Player.PlayPause:SetVisible(false)
                 CloudMusic.Player.Next:SetVisible(false)
@@ -817,7 +862,7 @@ if CLIENT then
             elseif currentMode == "List" then
                 currentMode = "ListLoop"
             end
-            LocalPlayer():SetPData("CloudMusicMode",currentMode)
+            SetSettings("CloudMusicPlayMode",currentMode)
         end
         function CloudMusic.Player.Mode:Paint(w,h)
             draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and Color(0,153,230) or GetSubColor())
@@ -899,34 +944,31 @@ if CLIENT then
                             if( value ){
                                 property = capitalize(property.toLowerCase());
                                 this.style['webkit'+property] = value;
-                                this.style['Moz'+property] = value;
-                                this.style['ms'+property] = value;
-                                this.style['O'+property] = value;
                                 this.style[property.toLowerCase()] = value;
                             }else{
                                 return window.getComputedStyle(this).getPropertyValue(
-                                        ('webkit'+property)||('Moz'+property)||('ms'+property)||('O'+property)||property);
+                                        ('webkit'+property)||property);
                             }
                             function capitalize(word){
                                 return word.charAt(0).toUpperCase() + word.slice(1);
                             }
                         }
-                        var circleBar    = document.getElementsByClassName('circle-bar')[0];
-                        var color        = circleBar.css('background-color');
-                        var left_circle  = circleBar.getElementsByClassName('circle-bar-left')[0];
+                        var circleBar = document.getElementsByClassName('circle-bar')[0];
+                        var color = circleBar.css('background-color');
+                        var left_circle = circleBar.getElementsByClassName('circle-bar-left')[0];
                         var right_circle = circleBar.getElementsByClassName('circle-bar-right')[0];
                         var right_circle_ori = right_circle.css('background-color');
                         function setPercent(percent) {
                             if( percent <= 50 ) {
                                 var rotate = 'rotate('+(percent*3.6)+'deg)';
                                 right_circle.css3('transform',rotate);
-                                right_circle.css ('background-color',right_circle_ori);
+                                right_circle.css('background-color',right_circle_ori);
                                 left_circle.css3('transform','rotate(0deg)');
                             } else {
                                 var rotate = 'rotate('+((percent-50)*3.6)+'deg)';
-                                right_circle.css ('background-color',color);
+                                right_circle.css('background-color',color);
                                 right_circle.css3('transform','rotate(0deg)');
-                                left_circle.css3 ('transform',rotate);
+                                left_circle.css3('transform',rotate);
                             }
                         }
                         function setThumbnail(src) {
@@ -1000,29 +1042,25 @@ if CLIENT then
                 self:RunJavascript([[
                     setPercent(]]..(CloudMusic.CurrentChannel:GetTime() / CloudMusic.CurrentChannel:GetLength() * 100)..[[);
                 ]])
-                if lrc ~= nil and IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_PLAYING then
+                if lrc and IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_PLAYING then
                     local mainLrc = ""
                     local subLrc = ""
                     for i=lrcStartPos,#lrc do
                         local line = lrc[i]
-                        if not IsValid(CloudMusic.CurrentChannel) then
-                            break
-                        end
+                        if not IsValid(CloudMusic.CurrentChannel) then break end
                         if i == #lrc or lrc[i+1].Time > CloudMusic.CurrentChannel:GetTime()*1000 then
                             mainLrc = line.Value
-                            if transLrc == nil and i ~= #lrc then
+                            if not transLrc and i ~= #lrc then
                                 subLrc = lrc[i+1].Value
                             end
                             lrcStartPos = i
                             break
                         end
                     end
-                    if transLrc ~= nil then
+                    if transLrc and mainLrc ~= "" then
                         for i=transLrcStartPos,#transLrc do
                             local line = transLrc[i]
-                            if not IsValid(CloudMusic.CurrentChannel) then
-                                break
-                            end
+                            if not IsValid(CloudMusic.CurrentChannel) then break end
                             if i == #lrc or lrc[i+1].Time > CloudMusic.CurrentChannel:GetTime()*1000 then
                                 subLrc = line.Value
                                 transLrcStartPos = i
@@ -1030,8 +1068,8 @@ if CLIENT then
                             end
                         end
                     end
-                    if CloudMusic.HUD.Ready then
-                        CloudMusic.HUD:RunJavascript([[
+                    if self.Ready then
+                        self:RunJavascript([[
                             setLrc("]]..mainLrc..[[","]]..subLrc..[[");
                         ]])
                     end
@@ -1042,52 +1080,45 @@ if CLIENT then
             end
         end
         function CloudMusic.HUD:Paint(w,h)
-            if IsValid(CloudMusic.CurrentChannel) then
-                if LocalPlayer():GetPData("CloudMusicHUDFFT","false") == "true" then
-                    local samples = {}
-                    local count = CloudMusic.CurrentChannel:FFT(samples,FFT_256)
-                    local height = (h*0.7-count*1+1)/count
-                    local top = h/2-h*0.7/2
-                    for i=1,count do
-                        local sample = samples[i]
-                        surface.SetDrawColor(GetMainColor())
-                        surface.DrawRect(0, top, (w*0.3)*sample, height)
-                        top = top + height + 1
-                    end
+            if IsValid(CloudMusic.CurrentChannel) and GetSettings("CloudMusicHUDFFT") == "true" then
+                local samples = {}
+                local count = CloudMusic.CurrentChannel:FFT(samples,FFT_256)
+                local height = (h*0.7-count*1+1)/count
+                local top = h/2-h*0.7/2
+                for i=1,count do
+                    local sample = samples[i]
+                    surface.SetDrawColor(GetMainColor())
+                    surface.DrawRect(0, top, (w*0.3)*sample, height)
+                    top = top + height + 1
                 end
             end
         end
         CloudMusic.Settings = vgui.Create("DPanel",CloudMusic)
         CloudMusic.Settings:SetPos(winw,30)
         CloudMusic.Settings:SetSize(winw,winh-30)
-        function CloudMusic.Settings:OnMousePressed(key)
-            if key == MOUSE_LEFT then
-
-            end
-        end
         function CloudMusic.Settings:Paint(w,h)
             draw.DrawText("设置", "CloudMusicSubTitle", 5, 5, Color(0,0,0))
             draw.DrawText("显示界面内频谱", "CloudMusicText", 25, 30, Color(0,0,0))
             draw.DrawText("显示HUD频谱", "CloudMusicText", 25, 50, Color(0,0,0))
-            if LocalPlayer():GetPData("CloudMusicHUDFFT","false") == "true" then draw.DrawText("（可能会导致严重掉帧）", "CloudMusicText", 90, 50, Color(255,0,0)) end
+            if GetSettings("CloudMusicHUDFFT") == "true" then draw.DrawText("（可能会导致严重掉帧）", "CloudMusicText", 90, 50, Color(255,0,0)) end
             draw.DrawText("显示歌词", "CloudMusicText", 25, 70, Color(0,0,0))
             draw.DrawText("启用动画", "CloudMusicText", 25, 90, Color(0,0,0))
             draw.DrawText("打开3D外放", "CloudMusicText", 140, 30, Color(0,0,0))
             draw.DrawText("屏蔽他人3D外放", "CloudMusicText", 140, 70, Color(0,0,0))
             draw.DrawText("主色调", "CloudMusicSmallTitle", 5, 112, Color(0,0,0))
             draw.DrawText("副色调", "CloudMusicSmallTitle", 160, 112, Color(0,0,0))
-            draw.DrawText("本播放器由Texas制作，感谢淡定WackoD在界面开发遇到一个问题时的提示\n歌词功能使用了自有服务器进行简化处理", "CloudMusicText", w/2, h-64, Color(0,0,0), TEXT_ALIGN_CENTER)
-            draw.DrawText("版本 1.2.1", "CloudMusicText", 5, winh-49, Color(0,0,0))
+            draw.DrawText("本播放器由Texas制作，感谢淡定WackoD在界面开发遇到一个问题时的提示以及开发3D外放时的帮助\n歌词功能使用了自有服务器进行简化处理", "CloudMusicText", w/2, h-64, Color(0,0,0), TEXT_ALIGN_CENTER)
+            draw.DrawText("版本 1.2.2", "CloudMusicText", 5, winh-49, Color(0,0,0))
         end
         function CloudMusic.Settings:Think()
             if currentShowingPage == "Main" and (self:GetPos()) < winw then
-                if LocalPlayer():GetPData("CloudMusicAnimation","true") == "true" then
+                if GetSettings("CloudMusicAnimation") == "true" then
                     self:SetPos((self:GetPos())+slideAnimPix,30)
                 else
                     self:SetPos(winw,30)
                 end
             elseif currentShowingPage == "Settings" and (self:GetPos()) ~= 0 then
-                if LocalPlayer():GetPData("CloudMusicAnimation","true") == "true" then
+                if GetSettings("CloudMusicAnimation") == "true" then
                     self:SetPos((self:GetPos())-slideAnimPix,30)
                     if (self:GetPos()) < 0 then self:SetPos(0,30) end
                 else
@@ -1106,40 +1137,40 @@ if CLIENT then
         end
         CloudMusic.Settings.FFT = vgui.Create("DCheckBox",CloudMusic.Settings)
         CloudMusic.Settings.FFT:SetPos(5,30)
-        CloudMusic.Settings.FFT:SetChecked(LocalPlayer():GetPData("CloudMusicFFT","true") == "true")
+        CloudMusic.Settings.FFT:SetChecked(GetSettings("CloudMusicFFT") == "true")
         function CloudMusic.Settings.FFT:OnChange(val)
-            LocalPlayer():SetPData("CloudMusicFFT", val)
+            SetSettings("CloudMusicFFT", val)
         end
         CloudMusic.Settings.HUDFFT = vgui.Create("DCheckBox",CloudMusic.Settings)
         CloudMusic.Settings.HUDFFT:SetPos(5,50)
-        CloudMusic.Settings.HUDFFT:SetChecked(LocalPlayer():GetPData("CloudMusicHUDFFT","false") == "true")
+        CloudMusic.Settings.HUDFFT:SetChecked(GetSettings("CloudMusicHUDFFT") == "true")
         function CloudMusic.Settings.HUDFFT:OnChange(val)
-            LocalPlayer():SetPData("CloudMusicHUDFFT", val)
+            SetSettings("CloudMusicHUDFFT", val)
         end
         CloudMusic.Settings.Lyric = vgui.Create("DCheckBox",CloudMusic.Settings)
         CloudMusic.Settings.Lyric:SetPos(5,70)
-        CloudMusic.Settings.Lyric:SetChecked(LocalPlayer():GetPData("CloudMusicLyric","true") == "true")
+        CloudMusic.Settings.Lyric:SetChecked(GetSettings("CloudMusicLyric") == "true")
         function CloudMusic.Settings.Lyric:OnChange(val)
             lrc = nil
             transLrc = nil
             CloudMusic.HUD:RunJavascript([[
                 setLrc("","");
             ]])
-            if val and CloudMusic.CurrentPlaying ~= nil then
+            if val and CloudMusic.CurrentPlaying then
                 FetchLyric()
             end
-            LocalPlayer():SetPData("CloudMusicLyric", val)
+            SetSettings("CloudMusicLyric", val)
         end
         CloudMusic.Settings.Animation = vgui.Create("DCheckBox",CloudMusic.Settings)
         CloudMusic.Settings.Animation:SetPos(5,90)
-        CloudMusic.Settings.Animation:SetChecked(LocalPlayer():GetPData("CloudMusicAnimation","true") == "true")
+        CloudMusic.Settings.Animation:SetChecked(GetSettings("CloudMusicAnimation") == "true")
         function CloudMusic.Settings.Animation:OnChange(val)
-            LocalPlayer():SetPData("CloudMusicAnimation",val)
+            SetSettings("CloudMusicAnimation",val)
         end
         CloudMusic.Settings.A3D = vgui.Create("DCheckBox",CloudMusic.Settings)
         CloudMusic.Settings.A3D:SetPos(120,30)
-        if ULib and ULib.ucl.query(LocalPlayer(),"cloudmusic3d") then
-            CloudMusic.Settings.A3D:SetChecked(LocalPlayer():GetPData("CloudMusic3D","false") == "true")
+        if not ULib or ULib.ucl.query(LocalPlayer(),"cloudmusic3d") then
+            CloudMusic.Settings.A3D:SetChecked(GetSettings("CloudMusic3D") == "true")
         else
             CloudMusic.Settings.A3D:SetChecked(false)
         end
@@ -1149,7 +1180,7 @@ if CLIENT then
                 self:SetChecked(false)
                 return
             end
-            LocalPlayer():SetPData("CloudMusic3D", val)
+            SetSettings("CloudMusic3D", val)
             if val then
                 SendSyncData()
             else
@@ -1164,7 +1195,7 @@ if CLIENT then
             end
         end
         function CloudMusic.Settings.A3D:Think()
-            if ULib and not ULib.ucl.query(LocalPlayer(),"cloudmusic3d") then
+            if ULib and not ULib.ucl.query(LocalPlayer(),"cloudmusic3d") and self:GetChecked() then
                 self:SetChecked(false)
                 net.Start("CloudMusic3DSync")
                 net.WriteEntity(LocalPlayer())
@@ -1178,9 +1209,9 @@ if CLIENT then
         end
         CloudMusic.Settings.Bypass3D = vgui.Create("DCheckBox",CloudMusic.Settings)
         CloudMusic.Settings.Bypass3D:SetPos(120,70)
-        CloudMusic.Settings.Bypass3D:SetChecked(LocalPlayer():GetPData("CloudMusicBypass3D","false") == "true")
+        CloudMusic.Settings.Bypass3D:SetChecked(GetSettings("CloudMusicBypass3D") == "true")
         function CloudMusic.Settings.Bypass3D:OnChange(val)
-            LocalPlayer():SetPData("CloudMusicBypass3D", val)
+            SetSettings("CloudMusicBypass3D", val)
             if val then
                 local players = player.GetAll()
                 for i=1,#players do
@@ -1243,21 +1274,6 @@ if CLIENT then
         CloudMusic.Songs = {}
         CloudMusic:SetAlpha(0)
         CloudMusic:SetVisible(false)
-        timer.Create("CloudMusicHUDFFT",1,0,function()
-            if IsValid(CloudMusic.CurrentChannel) and LocalPlayer():GetPData("CloudMusicHUDFFT","false") == "true" then
-                local samples = {}
-                local count = CloudMusic.CurrentChannel:FFT(samples,FFT_256)
-                local height = (ScrH()*0.7-count*1+1)/count
-                local top = ScrH()/2-ScrH()*0.7/2
-                for i=1,count do
-                    local sample = samples[i]
-                    surface.SetDrawColor(GetMainColor())
-                    surface.DrawRect(0, top, (ScrW()*0.3)*sample, height)
-                    top = top + height + 1
-                end
-            end
-        end)
-        timer.Start("CloudMusicHUDFFT")
         local didPlayerPaused = false
         hook.Add("PreCleanupMap","CloudMusic_PreCleanup",function()
             if IsValid(CloudMusic.CurrentChannel) then
@@ -1299,7 +1315,7 @@ if CLIENT then
             end
         end)
         net.Receive("CloudMusic3DSync",function(len,ply)
-            if LocalPlayer():GetPData("CloudMusicBypass3D","false") == "true" then return end
+            if GetSettings("CloudMusicBypass3D") == "true" then return end
             local p = net.ReadEntity()
             local valid = net.ReadBool()
             local state = net.ReadInt(32)
@@ -1338,11 +1354,11 @@ if CLIENT then
     Init()
 end
 if SERVER then
+    print("===========================\n")
+    print("    Cloud Music for LUA    \n")
+    print("         By  Texas         \n")
+    print("===========================")
     local function HookKey()
-        print("===========================\n")
-        print("    Cloud Music for LUA    \n")
-        print("         By  Texas         \n")
-        print("===========================")
         util.AddNetworkString("ToggleCloudMusic")
         util.AddNetworkString("CloudMusicKeyDown")
         util.AddNetworkString("CloudMusic3DSync")
@@ -1354,7 +1370,7 @@ if SERVER then
     end
     hook.Add("InitPostEntity", "CloudMusic_Init", HookKey)
     hook.Add("PlayerButtonDown", "CloudMusic_KeyPress", function(ply,btn)
-        if btn == KEY_F8 then
+        if btn == KEY_F8 or btn == KEY_F9 then
             net.Start("ToggleCloudMusic")
             net.Send(ply)
         else
