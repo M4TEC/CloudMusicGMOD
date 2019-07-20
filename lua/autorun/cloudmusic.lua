@@ -1061,7 +1061,7 @@ if CLIENT then
                         for i=transLrcStartPos,#transLrc do
                             local line = transLrc[i]
                             if not IsValid(CloudMusic.CurrentChannel) then break end
-                            if i == #lrc or lrc[i+1].Time > CloudMusic.CurrentChannel:GetTime()*1000 then
+                            if i == #transLrc or transLrc[i+1].Time > CloudMusic.CurrentChannel:GetTime()*1000 then
                                 subLrc = line.Value
                                 transLrcStartPos = i
                                 break
