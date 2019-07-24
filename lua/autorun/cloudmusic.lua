@@ -1179,13 +1179,13 @@ if CLIENT then
         end
         CloudMusic.Settings.A3D = vgui.Create("DCheckBox",CloudMusic.Settings)
         CloudMusic.Settings.A3D:SetPos(120,30)
-        if not ULib or ULib.ucl.query(LocalPlayer(),"cloudmusic3d") then
+        if ULib == nil or ULib.ucl.query(LocalPlayer(),"cloudmusic3d") then
             CloudMusic.Settings.A3D:SetChecked(GetSettings("CloudMusic3D") == "true")
         else
             CloudMusic.Settings.A3D:SetChecked(false)
         end
         function CloudMusic.Settings.A3D:OnChange(val)
-            if ULib and not ULib.ucl.query(LocalPlayer(),"cloudmusic3d") and val then
+            if ULib ~= nil and not ULib.ucl.query(LocalPlayer(),"cloudmusic3d") and val then
                 Derma_Message("你没有权限开启外放", "无权限", "好的")
                 self:SetChecked(false)
                 return
@@ -1205,7 +1205,7 @@ if CLIENT then
             end
         end
         function CloudMusic.Settings.A3D:Think()
-            if ULib and not ULib.ucl.query(LocalPlayer(),"cloudmusic3d") and self:GetChecked() then
+            if ULib ~= nil and not ULib.ucl.query(LocalPlayer(),"cloudmusic3d") and self:GetChecked() then
                 self:SetChecked(false)
                 net.Start("CloudMusic3DSync")
                 net.WriteEntity(LocalPlayer())
@@ -1373,7 +1373,7 @@ if SERVER then
         util.AddNetworkString("CloudMusicKeyDown")
         util.AddNetworkString("CloudMusic3DSync")
         util.AddNetworkString("CloudMusicReqSync")
-        if not CloudMusicRegisteredULib and ULib then
+        if not CloudMusicRegisteredULib and ULib ~= nil then
             CloudMusicRegisteredULib = true
             ULib.ucl.registerAccess("cloudmusic3d","user","允许玩家使用3D外放功能","网易云音乐")
         end
@@ -1403,7 +1403,7 @@ if SERVER then
         local volume = net.ReadFloat()
         local id = net.ReadString()
         local time = net.ReadFloat()
-        if ULib and not ULib.ucl.query(p,"cloudmusic3d") and valid then return end
+        if ULib ~= nil and not ULib.ucl.query(p,"cloudmusic3d") and valid then return end
         net.Start("CloudMusic3DSync")
         net.WriteEntity(p)
         net.WriteBool(valid)
