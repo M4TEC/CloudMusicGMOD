@@ -36,7 +36,8 @@ if CLIENT then
             ["CloudMusicMainBlue"] = "255",
             ["CloudMusicSubRed"] = "102",
             ["CloudMusicSubGreen"] = "204",
-            ["CloudMusicSubBlue"] = "255"
+            ["CloudMusicSubBlue"] = "255",
+            ["CloudMusicHudPos"] = "top-left"
         }
         local defaultKeys = table.GetKeys(settings)
         if not file.Exists("cloudmusic.dat", "DATA") then
@@ -145,6 +146,8 @@ if CLIENT then
         local lrcStartPos = 1
         local transLrcStartPos = 1
         local errorCount = 0
+        local currentHudPos = GetSettings("CloudMusicHudPos")
+        local buffering = false
         local function TextMessage(str)
             msg = str
             timer.Simple(10, function()msg = "" end)
@@ -460,7 +463,7 @@ if CLIENT then
                 ["limit"] = "100"
             }, function(body)
                 local json = util.JSONToTable(body)
-                if not json or json["code"] ~= 200 then
+                if not json or json["code"] ~= 200 or json["result"]["songs"] == nil then
                     Derma_Message("搜索失败", "错误", "好的")
                     return
                 end
@@ -515,7 +518,7 @@ if CLIENT then
             if offset == 0 then return end
             http.Fetch("http://music.163.com/api/search/pc?s="..CloudMusic.SearchForm.Input:GetValue().."&type=1&limit=100&offset="..offset-100, function(body)
                 local json = util.JSONToTable(body)
-                if not json or json["code"] ~= 200 then
+                if not json or json["code"] ~= 200 or json["result"]["songs"] == nil then
                     Derma_Message("换页失败", "错误", "好的")
                 end
                 CloudMusic.NextPage:SetDisabled(false)
@@ -560,7 +563,7 @@ if CLIENT then
             if offset+100 > songCount then return end
             http.Fetch("http://music.163.com/api/search/pc?s="..CloudMusic.SearchForm.Input:GetValue().."&type=1&limit=100&offset="..offset+100, function(body)
                 local json = util.JSONToTable(body)
-                if not json or json["code"] ~= 200 then
+                if not json or json["code"] ~= 200 or json["result"]["songs"] == nil then
                     Derma_Message("换页失败", "错误", "好的")
                 end
                 CloudMusic.PrevPage:SetDisabled(false)
@@ -607,6 +610,7 @@ if CLIENT then
             CloudMusic:Play(id)
         end
         function CloudMusic:Play(id)
+            if buffering then return end
             if #CloudMusic.Songs == 0 then
                 notification.AddLegacy("歌曲列表为空", NOTIFY_GENERIC, 3)
                 return
@@ -632,7 +636,9 @@ if CLIENT then
                 CloudMusic.CurrentChannel = nil
             end
             local cId = CloudMusic.CurrentPlaying.ID
+            buffering = true
             sound.PlayURL("https://music.163.com/song/media/outer/url?id="..cId..".mp3", "noblock", function(station)
+                buffering = false
                 if IsValid(station) then
                     if CloudMusic.CurrentPlaying.ID == cId and not IsValid(CloudMusic.CurrentChannel) then
                         station:Play()
@@ -896,6 +902,11 @@ if CLIENT then
                 <html>
                     <head>
                         <style>
+                            .hud { position: fixed; }
+                            .hud.top-left { top: 5px; left: 5px; }
+                            .hud.top-right { top: 5px; right: 5px; text-align: right; }
+                            .hud.bottom-left { bottom: 5px; left: 5px; }
+                            .hud.bottom-right { bottom: 5px; right: 5px; text-align: right; }
                             .circle-bar { display:inline-block; font-size:200px; width: 36px; height: 36px; position: relative; background-color: #66CCFF; }
                             .circle-bar-left,.circle-bar-right { width: 36px; height: 36px; background-color: white; }
                             .circle-bar-right { clip:rect(0,auto,auto,18px); }
@@ -912,20 +923,22 @@ if CLIENT then
                         </style>
                     </head>
                     <body class="hide">
-                        <div class="circle-bar">
-                            <div class="circle-bar-left"></div>
-                            <div class="circle-bar-right"></div>
-                            <img src="" class="thumbnail"/>
-                        </div>
-                        <div class="song-info">
-                            <span class="name"></span><br/>
-                            <span class="artist"></span>
-                        </div>
-                        <br/>
-                        <div class="lyric">
-                            <span></span>
+                        <div class="hud">
+                            <div class="circle-bar">
+                                <div class="circle-bar-left"></div>
+                                <div class="circle-bar-right"></div>
+                                <img src="" class="thumbnail"/>
+                            </div>
+                            <div class="song-info">
+                                <span class="name"></span><br/>
+                                <span class="artist"></span>
+                            </div>
                             <br/>
-                            <span></span>
+                            <div class="lyric">
+                                <span></span>
+                                <br/>
+                                <span></span>
+                            </div>
                         </div>
                         <script>
                         Element.prototype.css = function(property,value){
@@ -988,7 +1001,13 @@ if CLIENT then
                         }
                         function setLrc(first,second) {
                             document.getElementsByClassName("lyric")[0].children[0].innerText = first;
+                            if (first == "") {
+                                document.getElementsByClassName("lyric")[0].children[0].innerHTML = "&nbsp;";
+                            }
                             document.getElementsByClassName("lyric")[0].children[2].innerText = second;
+                            if (second == "") {
+                                document.getElementsByClassName("lyric")[0].children[2].innerHTML = "&nbsp;";
+                            }
                         }
                         function setMainColor(r,g,b) {
                             right_circle_ori = "rgb("+r+","+g+","+b+")";
@@ -999,6 +1018,9 @@ if CLIENT then
                         function setSubColor(r,g,b) {
                             color = "rgb("+r+","+g+","+b+")";
                             document.getElementsByClassName("circle-bar")[0].style.cssText = "background-color:rgb("+r+","+g+","+b+")";
+                        }
+                        function setHudPos(pos) {
+                            document.getElementsByClassName("hud")[0].className = "hud " + pos;
                         }
                         function show() {
                             setPercent(0);
@@ -1019,6 +1041,7 @@ if CLIENT then
             self:RunJavascript([[
                 setMainColor(]]..main.r..[[,]]..main.g..[[,]]..main.b..[[);
                 setSubColor(]]..sub.r..[[,]]..sub.g..[[,]]..sub.b..[[);
+                setHudPos("]]..currentHudPos..[[");
             ]])
         end
         function CloudMusic.HUD:Think()
@@ -1115,10 +1138,11 @@ if CLIENT then
             draw.DrawText("启用动画", "CloudMusicText", 25, 90, Color(0,0,0))
             draw.DrawText("打开3D外放", "CloudMusicText", 140, 30, Color(0,0,0))
             draw.DrawText("屏蔽他人3D外放", "CloudMusicText", 140, 70, Color(0,0,0))
+            draw.DrawText("HUD位置", "CloudMusicText", 295, 32, Color(0,0,0), TEXT_ALIGN_RIGHT)
             draw.DrawText("主色调", "CloudMusicSmallTitle", 5, 112, Color(0,0,0))
             draw.DrawText("副色调", "CloudMusicSmallTitle", 160, 112, Color(0,0,0))
             draw.DrawText("本播放器由Texas制作，感谢淡定WackoD在界面开发遇到一个问题时的提示以及开发3D外放时的帮助\n歌词功能使用了自有服务器进行简化处理", "CloudMusicText", w/2, h-64, Color(0,0,0), TEXT_ALIGN_CENTER)
-            draw.DrawText("版本 1.2.2", "CloudMusicText", 5, winh-49, Color(0,0,0))
+            draw.DrawText("版本 1.2.3", "CloudMusicText", 5, winh-49, Color(0,0,0))
         end
         function CloudMusic.Settings:Think()
             if currentShowingPage == "Main" and (self:GetPos()) < winw then
@@ -1235,6 +1259,37 @@ if CLIENT then
                 net.Start("CloudMusicReqSync")
                 net.SendToServer()
             end
+        end
+        CloudMusic.Settings.HudPos = vgui.Create("DButton",CloudMusic.Settings)
+        CloudMusic.Settings.HudPos:SetPos(300,30)
+        CloudMusic.Settings.HudPos:SetSize(45,20)
+        CloudMusic.Settings.HudPos:SetColor(Color(255,255,255))
+        function CloudMusic.Settings.HudPos:DoClick()
+            if currentHudPos == "top-left" then
+                currentHudPos = "top-right"
+            elseif currentHudPos == "top-right" then
+                currentHudPos = "bottom-left"
+            elseif currentHudPos == "bottom-left" then
+                currentHudPos = "bottom-right"
+            elseif currentHudPos == "bottom-right" then
+                currentHudPos = "top-left"
+            end
+            CloudMusic.HUD:RunJavascript([[setHudPos("]]..currentHudPos..[[");]])
+            SetSettings("CloudMusicHudPos",currentHudPos)
+        end
+        function CloudMusic.Settings.HudPos:Think()
+            if currentHudPos == "top-left" then
+                self:SetText("左上角")
+            elseif currentHudPos == "top-right" then
+                self:SetText("右上角")
+            elseif currentHudPos == "bottom-left" then
+                self:SetText("左下角")
+            elseif currentHudPos == "bottom-right" then
+                self:SetText("右下角")
+            end
+        end
+        function CloudMusic.Settings.HudPos:Paint(w,h)
+            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and Color(0,153,230) or GetSubColor())
         end
         CloudMusic.Settings.MainColor = vgui.Create("DColorMixer",CloudMusic.Settings)
         CloudMusic.Settings.MainColor:SetPos(5,130)
@@ -1359,9 +1414,22 @@ if CLIENT then
             end
         end)
         net.Receive("CloudMusicReqSync", SendSyncData)
+        CloudMusicInitOnce = true
     end
     hook.Add("InitPostEntity", "CloudMusic_Init", Init)
-    Init()
+    hook.Add("OnPlayerChat","CloudMusic_PlayerChat",function(ply,text,team,dead)
+        if ply ~= LocalPlayer() then return end
+        if string.lower(text) == "!cloudmusic" or string.lower(text) == "!cm" then
+            ToggleCloudMusic()
+            return true
+        end
+    end)
+    concommand.Add("cloudmusic", function()
+        ToggleCloudMusic() 
+    end, nil, "打开网易云播放器")
+    if CloudMusicInitOnce then
+        Init()
+    end
 end
 if SERVER then
     print("===========================\n")
@@ -1380,7 +1448,7 @@ if SERVER then
     end
     hook.Add("InitPostEntity", "CloudMusic_Init", HookKey)
     hook.Add("PlayerButtonDown", "CloudMusic_KeyPress", function(ply,btn)
-        if btn == KEY_F8 or btn == KEY_F9 then
+        if btn == KEY_F9 then
             net.Start("ToggleCloudMusic")
             net.Send(ply)
         else
