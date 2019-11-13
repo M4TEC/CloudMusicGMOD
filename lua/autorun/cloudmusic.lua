@@ -191,7 +191,7 @@ if CLIENT then
             if GetSettings("CloudMusicLyric") ~= "true" then return end
             lrcStartPos = 1
             transLrcStartPos = 1
-            http.Fetch("http://texaservice.tk:21340/NeteaseLyric.aspx?song="..CloudMusic.CurrentPlaying.ID, function(body)
+            http.Fetch("http://api.texl.top/netease/lyric/?id="..CloudMusic.CurrentPlaying.ID, function(body)
                 local json = util.JSONToTable(body)
                 if not json then
                     notification.AddLegacy("无法获取 "..currentPlaying.Name.." 的歌词", NOTIFY_ERROR, 3)
