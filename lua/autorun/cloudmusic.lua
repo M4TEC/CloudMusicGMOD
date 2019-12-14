@@ -37,7 +37,9 @@ if CLIENT then
             ["CloudMusicSubRed"] = "102",
             ["CloudMusicSubGreen"] = "204",
             ["CloudMusicSubBlue"] = "255",
-            ["CloudMusicHudPos"] = "top-left"
+            ["CloudMusicHudPos"] = "top-left",
+            ["CloudMusicBlacklistUser"] = util.TableToJSON({}),
+            ["CloudMusicPlaylist"] = util.TableToJSON({})
         }
         local defaultKeys = table.GetKeys(settings)
         if not file.Exists("cloudmusic.dat", "DATA") then
@@ -215,10 +217,10 @@ if CLIENT then
                 CloudMusic:Next()
             elseif currentMode == "List" then
                 local last = false
-                for i=1,#CloudMusic.Songs do
-                    local song = CloudMusic.Songs[i]
+                for i=1,#CloudMusic.Playlist.Songs do
+                    local song = CloudMusic.Playlist.Songs[i]
                     if song.ID == CloudMusic.CurrentPlaying.ID then
-                        if i == #CloudMusic.Songs then
+                        if i == #CloudMusic.Playlist.Songs then
                             last = true
                         end
                         break
@@ -228,7 +230,7 @@ if CLIENT then
                     CloudMusic:Next()
                 end
             elseif currentMode == "Random" then
-                CloudMusic:Play(math.random(1, #CloudMusic.Songs))
+                CloudMusic:Play(math.random(1, #CloudMusic.Playlist.Songs))
             elseif currentMode == "SingleLoop" then
                 lrcStartPos = 1
                 transLrcStartPos = 1
@@ -258,6 +260,11 @@ if CLIENT then
                         net.SendToServer()
                     end
                 end)
+            end
+        end
+        local function DisableListHeader(list)
+            for _,v in pairs(list.Columns) do
+                v.DoClick = function() end
             end
         end
         function ToggleCloudMusic()
@@ -377,7 +384,7 @@ if CLIENT then
         CloudMusic.SettingsButton:SetSize(30,20)
         CloudMusic.SettingsButton:SetColor(Color(255,255,255))
         CloudMusic.SettingsButton:SetText("设置")
-        CloudMusic.SettingsButton.DoClick = function()currentShowingPage = "Settings" end
+        CloudMusic.SettingsButton.DoClick = function()currentShowingPage = "Settings"CloudMusic.Settings.BlacklistUser:Sync() end
         function CloudMusic.SettingsButton:Paint(w,h)
             draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and Color(0,153,230) or GetSubColor())
         end
@@ -604,22 +611,94 @@ if CLIENT then
         CloudMusic.Songlist:AddColumn("专辑")
         CloudMusic.Songlist:AddColumn("歌曲ID"):SetMaxWidth(100)
         CloudMusic.Songlist:SetMultiSelect(false)
+        CloudMusic.Songlist:SetSortable(false)
         CloudMusic.Songlist:SetPos(5,44)
-        CloudMusic.Songlist:SetSize(winw-10,winh-149)
+        CloudMusic.Songlist:SetSize(winw-315,winh-149)
+        DisableListHeader(CloudMusic.Songlist)
         function CloudMusic.Songlist:DoDoubleClick(id, line)
+            CloudMusic.Playlist:AddMusic(CloudMusic.Songs[id])
+        end
+        CloudMusic.Playlist = vgui.Create("DListView",CloudMusic.Body)
+        CloudMusic.Playlist:AddColumn("歌曲名")
+        CloudMusic.Playlist:AddColumn("歌手")
+        CloudMusic.Playlist:AddColumn("歌曲ID"):SetMaxWidth(100)
+        CloudMusic.Playlist:SetSortable(false)
+        CloudMusic.Playlist:SetPos(winw-305,44)
+        CloudMusic.Playlist:SetSize(300,winh-149)
+        DisableListHeader(CloudMusic.Playlist)
+        function CloudMusic.Playlist:DoDoubleClick(id, line)
             CloudMusic:Play(id)
         end
+        function CloudMusic.Playlist:OnRowRightClick(lineID, line)
+            self:ShowMenu()
+        end
+        function CloudMusic.Playlist:ShowMenu()
+            local menu = DermaMenu(self)
+            menu:AddOption("播放",function()
+                CloudMusic:Play(self:GetSelectedLine())
+            end):SetIcon("icon16/transmit.png")
+            menu:AddOption("复制歌曲ID",function()
+                SetClipboardText(self.Songs[self:GetSelectedLine()].ID)
+                Derma_Message("已复制到剪贴板", "复制成功", "好的")
+            end):SetIcon("icon16/page_copy.png")
+            menu:AddOption("复制歌曲URL",function()
+                SetClipboardText("https://music.163.com/song/media/outer/url?id="..self.Songs[self:GetSelectedLine()].ID)
+                Derma_Message("已复制到剪贴板", "复制成功", "好的")
+            end):SetIcon("icon16/page_white_copy.png")
+            menu:AddSpacer()
+            menu:AddOption("删除选中歌曲",function()
+                local selectedCount = #self:GetSelected()
+                for _=1,selectedCount do
+                    table.remove(self.Songs,self:GetSelectedLine())
+                end
+                self:Sync()
+            end):SetIcon("icon16/page_delete.png")
+            menu:AddSpacer()
+            menu:AddOption("清空列表",function()
+                self.Songs = {}
+                self:Sync()
+            end):SetIcon("icon16/delete.png")
+            menu:Open()
+        end
+        function CloudMusic.Playlist:Save()
+            SetSettings("CloudMusicPlaylist",util.TableToJSON(self.Songs))
+        end
+        function CloudMusic.Playlist:Sync()
+            self:Clear()
+            for _,v in ipairs(self.Songs) do
+                self:AddLine(v.Name,v.Artist,v.ID)
+            end
+            self:Save()
+        end
+        function CloudMusic.Playlist:AddMusic(music)
+            for _,v in pairs(self:GetLines()) do
+                if v:GetColumnText(3) == music.ID then
+                    return
+                end
+            end
+            table.insert(self.Songs, music)
+            self:AddLine(music.Name,music.Artist,music.ID)
+            self:Save()
+            if not IsValid(CloudMusic.CurrentPlaying) then
+                CloudMusic:Play(#self.Songs)
+            end
+        end
+        CloudMusic.Playlist.Songs = util.JSONToTable(GetSettings("CloudMusicPlaylist"))
+        if CloudMusic.Playlist.Songs == nil then
+            CloudMusic.Playlist.Songs = {}
+        end
+        CloudMusic.Playlist:Sync()
         function CloudMusic:Play(id)
             if buffering then return end
-            if #CloudMusic.Songs == 0 then
+            if #CloudMusic.Playlist.Songs == 0 then
                 notification.AddLegacy("歌曲列表为空", NOTIFY_GENERIC, 3)
                 return
             end
-            if id and CloudMusic.Songs[id] then
-                CloudMusic.CurrentPlaying = CloudMusic.Songs[id]
+            if id and CloudMusic.Playlist.Songs[id] then
+                CloudMusic.CurrentPlaying = CloudMusic.Playlist.Songs[id]
             end
             if not CloudMusic.CurrentPlaying then
-                CloudMusic.CurrentPlaying = CloudMusic.Songs[1]
+                CloudMusic.CurrentPlaying = CloudMusic.Playlist.Songs[1]
             end
             CloudMusic.Player.Thumbnail:SetHTML([[
                 <body style="margin:0;">
@@ -651,10 +730,10 @@ if CLIENT then
                         CloudMusic:Next()
                     elseif currentMode == "List" then
                         local last = false
-                        for i=1,#CloudMusic.Songs do
-                            local song = CloudMusic.Songs[i]
+                        for i=1,#CloudMusic.Playlist.Songs do
+                            local song = CloudMusic.Playlist.Songs[i]
                             if song.ID == CloudMusic.CurrentPlaying.ID then
-                                if i == #CloudMusic.Songs then
+                                if i == #CloudMusic.Playlist.Songs then
                                     last = true
                                 end
                                 break
@@ -664,7 +743,7 @@ if CLIENT then
                             CloudMusic:Next()
                         end
                     elseif currentMode == "Random" then
-                        CloudMusic:Play(math.random(1, #CloudMusic.Songs))
+                        CloudMusic:Play(math.random(1, #CloudMusic.Playlist.Songs))
                     elseif currentMode == "SingleLoop" then
                         notification.AddLegacy("由于 "..CloudMusic.CurrentPlaying.Name.." 无法播放，已切到下一首", NOTIFY_GENERIC, 3)
                         CloudMusic:Next()
@@ -674,12 +753,13 @@ if CLIENT then
             end)
         end
         function CloudMusic:Next()
-            if CloudMusic.CurrentPlaying and #CloudMusic.Songs ~= 0 then
+            if #CloudMusic.Playlist.Songs == 0 then return end
+            if CloudMusic.CurrentPlaying then
                 local found = false
-                for i=1,#CloudMusic.Songs do
-                    local song = CloudMusic.Songs[i]
+                for i=1,#CloudMusic.Playlist.Songs do
+                    local song = CloudMusic.Playlist.Songs[i]
                     if song.ID == CloudMusic.CurrentPlaying.ID then
-                        if i == #CloudMusic.Songs then
+                        if i == #CloudMusic.Playlist.Songs then
                             CloudMusic:Play(1)
                         else
                             CloudMusic:Play(i+1)
@@ -696,13 +776,14 @@ if CLIENT then
             end
         end
         function CloudMusic:Prev()
-            if CloudMusic.CurrentPlaying and #CloudMusic.Songs ~= 0 then
+            if #CloudMusic.Playlist.Songs == 0 then return end
+            if CloudMusic.CurrentPlaying then
                 local found = false
-                for i=1,#CloudMusic.Songs do
-                    local song = CloudMusic.Songs[i]
+                for i=1,#CloudMusic.Playlist.Songs do
+                    local song = CloudMusic.Playlist.Songs[i]
                     if song.ID == CloudMusic.CurrentPlaying.ID then
                         if i == 1 then
-                            CloudMusic:Play(#CloudMusic.Songs)
+                            CloudMusic:Play(#CloudMusic.Playlist.Songs)
                         else
                             CloudMusic:Play(i-1)
                         end
@@ -1141,8 +1222,9 @@ if CLIENT then
             draw.DrawText("HUD位置", "CloudMusicText", 295, 32, Color(0,0,0), TEXT_ALIGN_RIGHT)
             draw.DrawText("主色调", "CloudMusicSmallTitle", 5, 112, Color(0,0,0))
             draw.DrawText("副色调", "CloudMusicSmallTitle", 160, 112, Color(0,0,0))
+            draw.DrawText("玩家列表", "CloudMusicSmallTitle", 315, 112, Color(0,0,0))
             draw.DrawText("本播放器由Texas制作，感谢淡定WackoD在界面开发遇到一个问题时的提示以及开发3D外放时的帮助\n歌词功能使用了自有服务器进行简化处理", "CloudMusicText", w/2, h-64, Color(0,0,0), TEXT_ALIGN_CENTER)
-            draw.DrawText("版本 1.2.3", "CloudMusicText", 5, winh-49, Color(0,0,0))
+            draw.DrawText("版本 1.3.0", "CloudMusicText", 5, winh-49, Color(0,0,0))
         end
         function CloudMusic.Settings:Think()
             if currentShowingPage == "Main" and (self:GetPos()) < winw then
@@ -1291,6 +1373,83 @@ if CLIENT then
         function CloudMusic.Settings.HudPos:Paint(w,h)
             draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and Color(0,153,230) or GetSubColor())
         end
+        CloudMusic.Settings.BlacklistUser = vgui.Create("DListView",CloudMusic.Settings)
+        CloudMusic.Settings.BlacklistUser:AddColumn("状态"):SetMaxWidth(25)
+        CloudMusic.Settings.BlacklistUser:AddColumn("玩家名称")
+        CloudMusic.Settings.BlacklistUser:AddColumn("SteamID64")
+        CloudMusic.Settings.BlacklistUser:SetPos(315,130)
+        CloudMusic.Settings.BlacklistUser:SetSize(200,200)
+        CloudMusic.Settings.BlacklistUser:SetMultiSelect(false)
+        CloudMusic.Settings.BlacklistUser:SetSortable(false)
+        DisableListHeader(CloudMusic.Settings.BlacklistUser)
+        function CloudMusic.Settings.BlacklistUser:OnRowRightClick(lineID, line)
+            self:ShowMenu()
+        end
+        function CloudMusic.Settings.BlacklistUser:ShowMenu()
+            local menu = DermaMenu(self)
+            menu:AddOption("加入/移出黑名单",function()
+                local selected = self:GetSelected()[1]
+                if selected.Blacklisted then
+                    for i=1,#self.Users do
+                        if self.Users[i].ID == selected:GetColumnText(3) then
+                            table.remove(self.Users,i)
+                        end
+                    end
+                else
+                    for _,v in pairs(player.GetAll()) do
+                        if IsValid(v.MusicChannel) and v:SteamID64() == selected:GetColumnText(3) then
+                            v.MusicChannel:Stop()
+                            v.MusicChannel = nil
+                        end
+                    end
+                    table.insert(self.Users,{
+                        Name = selected:GetColumnText(2),
+                        ID = selected:GetColumnText(3)
+                    })
+                end
+                self:Sync()
+            end):SetIcon("icon16/transmit.png")
+            menu:AddOption("复制玩家名称",function()
+                SetClipboardText(self.Users[self:GetSelectedLine()].Name)
+                Derma_Message("已复制到剪贴板", "复制成功", "好的")
+            end):SetIcon("icon16/page_copy.png")
+            menu:AddOption("复制Steam64ID",function()
+                SetClipboardText(self.Users[self:GetSelectedLine()].ID)
+                Derma_Message("已复制到剪贴板", "复制成功", "好的")
+            end):SetIcon("icon16/page_white_copy.png")
+            menu:AddSpacer()
+            menu:AddOption("将所有黑名单玩家移出",function()
+                self.Users = {}
+                self:Sync()
+            end):SetIcon("icon16/delete.png")
+            menu:Open()
+        end
+        function CloudMusic.Settings.BlacklistUser:Save()
+            SetSettings("CloudMusicBlacklistUsers",util.TableToJSON(self.Users))
+        end
+        function CloudMusic.Settings.BlacklistUser:Sync()
+            self:Clear()
+            for _,v in pairs(player.GetAll()) do
+                if v ~= LocalPlayer() then
+                    local line = self:AddLine("√",v:Nick(),v:SteamID64())
+                    local blacklisted = false
+                    for _,p in pairs(self.Users) do
+                        if p.ID == v:SteamID64() then
+                            blacklisted = true
+                        end
+                    end
+                    if blacklisted then
+                        line:SetColumnText(1,"×")
+                    end
+                    line.Blacklisted = blacklisted
+                end
+            end
+            self:Save()
+        end
+        CloudMusic.Settings.BlacklistUser.Users = util.JSONToTable(GetSettings("CloudMusicBlacklistUsers"))
+        if CloudMusic.Settings.BlacklistUser.Users == nil then
+            CloudMusic.Settings.BlacklistUser.Users = {}
+        end
         CloudMusic.Settings.MainColor = vgui.Create("DColorMixer",CloudMusic.Settings)
         CloudMusic.Settings.MainColor:SetPos(5,130)
         CloudMusic.Settings.MainColor:SetSize(150,200)
@@ -1388,6 +1547,11 @@ if CLIENT then
             local id = net.ReadString()
             local time = net.ReadFloat()
             if p == LocalPlayer() then return end
+            for _,v in pairs(CloudMusic.Settings.BlacklistUser.Users) do
+                if v.ID == p:SteamID64() then
+                    return
+                end
+            end
             if valid then
                 if not IsValid(p.MusicChannel) then
                     Create3DChannel(id,p)
@@ -1477,9 +1641,4 @@ if SERVER then
         net.WriteBool(valid)
         net.WriteInt(state, 32)
         net.WriteFloat(volume)
-        net.WriteString(id)
-        net.WriteFloat(time)
-        net.Broadcast()
-    end)
-    HookKey()
-end
+   
