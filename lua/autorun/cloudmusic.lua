@@ -1641,4 +1641,9 @@ if SERVER then
         net.WriteBool(valid)
         net.WriteInt(state, 32)
         net.WriteFloat(volume)
-   
+        net.WriteString(id)
+        net.WriteFloat(time)
+        net.Broadcast()
+    end)
+    HookKey()
+end
