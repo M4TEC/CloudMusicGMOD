@@ -679,7 +679,7 @@ if CLIENT then
             table.insert(self.Songs, music)
             self:AddLine(music.Name,music.Artist,music.ID)
             self:Save()
-            if not IsValid(CloudMusic.CurrentPlaying) then
+            if not IsValid(CloudMusic.CurrentChannel) then
                 CloudMusic:Play(#self.Songs)
             end
         end
@@ -1641,4 +1641,9 @@ if SERVER then
         net.WriteBool(valid)
         net.WriteInt(state, 32)
         net.WriteFloat(volume)
-   
+        net.WriteString(id)
+        net.WriteFloat(time)
+        net.Broadcast()
+    end)
+    HookKey()
+end
