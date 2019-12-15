@@ -1397,7 +1397,7 @@ if CLIENT then
                             table.remove(self.Users,i)
                             net.Start("CloudMusicReqSync")
                             net.SendToServer()
-                            return
+                            break
                         end
                     end
                 else
@@ -1414,7 +1414,7 @@ if CLIENT then
                     })
                 end
                 self:Sync()
-            end):SetIcon("icon16/transmit.png")
+            end):SetIcon("icon16/user_delete.png")
             menu:AddOption("复制玩家名称",function()
                 SetClipboardText(self.Users[self:GetSelectedLine()].Name)
                 Derma_Message("已复制到剪贴板", "复制成功", "好的")
