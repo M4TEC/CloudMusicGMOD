@@ -5,6 +5,7 @@
     "ignore":[
         "LICENSE",
         ".git/*",
+        ".gitignore",
         "README.md",
         "Publish.bat"
     ]
