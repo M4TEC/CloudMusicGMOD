@@ -1393,6 +1393,9 @@ if CLIENT then
                     for i=1,#self.Users do
                         if self.Users[i].ID == selected:GetColumnText(3) then
                             table.remove(self.Users,i)
+                            net.Start("CloudMusicReqSync")
+                            net.SendToServer()
+                            return
                         end
                     end
                 else
@@ -1400,6 +1403,7 @@ if CLIENT then
                         if IsValid(v.MusicChannel) and v:SteamID64() == selected:GetColumnText(3) then
                             v.MusicChannel:Stop()
                             v.MusicChannel = nil
+                            break
                         end
                     end
                     table.insert(self.Users,{
