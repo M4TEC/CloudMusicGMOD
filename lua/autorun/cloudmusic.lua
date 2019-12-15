@@ -275,6 +275,8 @@ if CLIENT then
                     CloudMusic:SetVisible(false)
                 end
             else
+                CloudMusic.Settings.BlacklistUser:Sync()
+                CloudMusic.Playlist:Sync()
                 CloudMusic:MakePopup()
                 CloudMusic:SetVisible(true)
                 targetOpacity = 255

@@ -4,6 +4,8 @@
     "tags":["fun"],
     "ignore":[
         "LICENSE",
-        ".git/*"
+        ".git/*",
+        "README.md",
+        "Publish.bat"
     ]
 }
