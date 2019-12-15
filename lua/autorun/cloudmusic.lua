@@ -38,7 +38,7 @@ if CLIENT then
             ["CloudMusicSubGreen"] = "204",
             ["CloudMusicSubBlue"] = "255",
             ["CloudMusicHudPos"] = "top-left",
-            ["CloudMusicBlacklistUser"] = util.TableToJSON({}),
+            ["CloudMusicBlacklistUsers"] = util.TableToJSON({}),
             ["CloudMusicPlaylist"] = util.TableToJSON({})
         }
         local defaultKeys = table.GetKeys(settings)
@@ -527,6 +527,7 @@ if CLIENT then
                 local json = util.JSONToTable(body)
                 if not json or json["code"] ~= 200 or json["result"]["songs"] == nil then
                     Derma_Message("换页失败", "错误", "好的")
+                    return
                 end
                 CloudMusic.NextPage:SetDisabled(false)
                 offset = offset - 100
@@ -572,6 +573,7 @@ if CLIENT then
                 local json = util.JSONToTable(body)
                 if not json or json["code"] ~= 200 or json["result"]["songs"] == nil then
                     Derma_Message("换页失败", "错误", "好的")
+                    return
                 end
                 CloudMusic.PrevPage:SetDisabled(false)
                 offset = offset + 100
