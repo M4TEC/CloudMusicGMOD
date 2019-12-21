@@ -201,7 +201,7 @@ if CLIENT then
             local currentPlaying = CloudMusic.CurrentPlaying
             lrc = nil
             transLrc = nil
-            if GetSettings("CloudMusicLyric") then return end
+            if not GetSettings("CloudMusicLyric") then return end
             lrcStartPos = 1
             transLrcStartPos = 1
             http.Fetch("http://api.texl.top/netease/lyric/?id="..CloudMusic.CurrentPlaying.ID, function(body)
@@ -249,7 +249,7 @@ if CLIENT then
             end
         end
         local function SendSyncData()
-            if GetSettings("CloudMusic3D") then return end
+            if not GetSettings("CloudMusic3D") then return end
             net.Start("CloudMusic3DSync")
             net.WriteEntity(LocalPlayer())
             net.WriteBool(IsValid(CloudMusic.CurrentChannel))
