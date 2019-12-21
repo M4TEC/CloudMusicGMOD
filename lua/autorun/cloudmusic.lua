@@ -1076,11 +1076,11 @@ if CLIENT then
         CloudMusic.Player.VolumeEnchance:SetText("开启音量增强")
         CloudMusic.Player.VolumeEnchance.DoClick = function()
             if not GetSettings("CloudMusicVolumeEnchance") then
-                SetSettings("CloudMusicVolumeEnchance","true")
+                SetSettings("CloudMusicVolumeEnchance",true)
             else
                 CloudMusic.Volume = 1
                 SetSettings("CloudMusicVolume",1)
-                SetSettings("CloudMusicVolumeEnchance","false")
+                SetSettings("CloudMusicVolumeEnchance",false)
             end
         end
         function CloudMusic.Player.VolumeEnchance:Think()
