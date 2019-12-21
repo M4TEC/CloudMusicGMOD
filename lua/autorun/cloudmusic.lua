@@ -27,6 +27,10 @@ if CLIENT then
             CloudMusic:Remove()
             CloudMusic = nil
         end
+        if not file.Exists("cloudmusic", "DATA") or not file.IsDir("cloudmusic", "DATA") then
+            file.CreateDir("cloudmusic")
+        end
+        local settingFilePath = "cloudmusic/settings."..CLOUDMUSIC_SETTING_FILE_VER..".dat"
         local function GetStringTableKeys(t)
             local keys = {}
             table.foreach(t,function(k,v)
@@ -63,26 +67,19 @@ if CLIENT then
         local function SaveSettings(set)
             local temp = table.Copy(settings)
             temp["version"] = CLOUDMUSIC_SETTING_FILE_VER
-            file.Write("cloudmusic.dat", util.TableToJSON(temp))
+            file.Write(settingFilePath, util.TableToJSON(temp))
         end
         local defaultSettings = table.Copy(settings)
         local defaultKeys = GetStringTableKeys(defaultSettings)
-        if not file.Exists("cloudmusic.dat", "DATA") then
+        if not file.Exists(settingFilePath, "DATA") then
             SaveSettings()
         else
-            local json = util.JSONToTable(file.Read("cloudmusic.dat"))
+            local json = util.JSONToTable(file.Read(settingFilePath))
             if not json then
                 SaveSettings()
             else
                 if json["version"] ~= CLOUDMUSIC_SETTING_FILE_VER then
-                    local ori = file.Read("cloudmusic.dat")
-                    local filename = "cloudmusic.oldset.dat"
-                    if json["version"] ~= nil then
-                        filename = "cloudmusic."..json["version"]..".set.dat"
-                    end
-                    file.Write(filename, ori)
                     SaveSettings()
-                    notification.AddLegacy("由于设置文件格式改变，你的设置已经恢复为默认设置，原设置已储存到游戏目录中garrysmod/data中",NOTIFY_GENERIC,5)
                     json = settings
                 end
                 local jsonKeys = GetStringTableKeys(json)
@@ -1349,7 +1346,7 @@ if CLIENT then
             draw.DrawText("界面颜色", "CloudMusicSmallTitle", 5, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("玩家列表", "CloudMusicSmallTitle", 170, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("本播放器由Texas制作，感谢淡定WackoD在界面开发遇到一个问题时的提示以及开发3D外放时的帮助\n歌词功能使用了Cloudflare Worker进行简化处理", "CloudMusicText", w/2, h-64, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_CENTER)
-            draw.DrawText("版本 1.4.0", "CloudMusicText", 5, winh-49, GetSettings("CloudMusicTextColor"))
+            draw.DrawText("版本 1.4.1", "CloudMusicText", 5, winh-49, GetSettings("CloudMusicTextColor"))
         end
         function CloudMusic.Settings:Think()
             if currentShowingPage == "Main" and (self:GetPos()) < winw then
