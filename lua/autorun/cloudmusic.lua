@@ -1347,7 +1347,7 @@ if CLIENT then
             draw.DrawText("界面颜色", "CloudMusicSmallTitle", 5, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("玩家列表", "CloudMusicSmallTitle", 170, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("本播放器由Texas制作，感谢淡定WackoD在界面开发遇到一个问题时的提示以及开发3D外放时的帮助\n歌词功能使用了Cloudflare Worker进行简化处理", "CloudMusicText", w/2, h-64, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_CENTER)
-            draw.DrawText("版本 1.4.1", "CloudMusicText", 5, winh-49, GetSettings("CloudMusicTextColor"))
+            draw.DrawText("版本 1.4.2", "CloudMusicText", 5, winh-49, GetSettings("CloudMusicTextColor"))
         end
         function CloudMusic.Settings:Think()
             if currentShowingPage == "Main" and (self:GetPos()) < winw then
