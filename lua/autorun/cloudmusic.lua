@@ -62,6 +62,7 @@ if CLIENT then
             ["CloudMusicTitleBarColor"] = Color(102,204,255),
             ["CloudMusicTitleBarTextColor"] = Color(255,255,255),
             ["CloudMusicHudPos"] = "top-left",
+            ["CloudMusicHUDCustomCSS"] = "",
             ["CloudMusicBlacklistUsers"] = {},
             ["CloudMusicPlaylist"] = {}
         }
@@ -284,6 +285,15 @@ if CLIENT then
                 SetUISkin(v)
             end
         end
+        local function SetDMUISkin(panel)
+            panel:SetSkin("CloudMusicDermaSkin")
+            if panel.SetColor then
+                panel:SetColor(Color(0,0,0))
+            end
+            for _,v in pairs(panel:GetChildren()) do
+                SetDMUISkin(v)
+            end
+        end
         function ToggleCloudMusic()
             if CloudMusic:IsVisible() then
                 targetOpacity = 0
@@ -294,7 +304,7 @@ if CLIENT then
             else
                 if system.GetCountry() ~= "CN" and not CloudMusic.CountryWarnShown then
                     CloudMusic.CountryWarnShown = true
-                    Derma_Message("检测到你不是中文系统，你可能不在中国，可能会无法正常使用\nDetected you are not using Chinese system, you might not in China, so Cloud Music Player probably unable to use.", "Cloud Music", "OK")
+                    SetDMUISkin(Derma_Message("检测到你不是中文系统，你可能不在中国，可能会无法正常使用\nDetected you are not using Chinese system, you might not in China, so Cloud Music Player probably unable to use.", "Cloud Music", "OK"))
                 end
                 CloudMusic.Settings.BlacklistUser:Sync()
                 CloudMusic.Playlist:Sync()
@@ -450,13 +460,13 @@ if CLIENT then
         CloudMusic.SonglistForm.Fetch.DoClick = function()
             local success,songlist = xpcall(function()return CloudMusic.SonglistForm.Input:GetInt()end,function()end)
             if not success or not songlist then
-                Derma_Message("请输入正确的歌单ID", "错误", "好的")
+                SetDMUISkin(Derma_Message("请输入正确的歌单ID", "错误", "好的"))
                 return
             end
             http.Fetch("http://music.163.com/api/playlist/detail?id="..songlist, function(json)
                 local obj = util.JSONToTable(json)
                 if obj["code"] ~= 200 then
-                    Derma_Message("获取歌单失败", "错误", "好的")
+                    SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的"))
                     return
                 end
                 CloudMusic.PrevPage:SetVisible(false)
@@ -485,7 +495,7 @@ if CLIENT then
                         Thumbnail = track["album"]["picUrl"]
                     })
                 end
-            end, function()Derma_Message("获取歌单失败", "错误", "好的") end)
+            end, function()SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的")) end)
         end
         function CloudMusic.SonglistForm.Fetch:Paint(w,h)
             draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
@@ -515,7 +525,7 @@ if CLIENT then
             }, function(body)
                 local json = util.JSONToTable(body)
                 if not json or json["code"] ~= 200 or json["result"]["songs"] == nil then
-                    Derma_Message("搜索失败", "错误", "好的")
+                    SetDMUISkin(Derma_Message("搜索失败", "错误", "好的"))
                     return
                 end
                 TextMessage("搜索到 "..json["result"]["songCount"].." 首歌曲")
@@ -554,23 +564,28 @@ if CLIENT then
                         Thumbnail = track["album"]["picUrl"]
                     })
                 end
-            end, function()Derma_Message("搜索失败", "错误", "好的") end)
+            end, function()SetDMUISkin(Derma_Message("搜索失败", "错误", "好的")) end)
         end
         function CloudMusic.SearchForm.Search:Paint(w,h)
             draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
         end
         CloudMusic.PrevPage = vgui.Create("DButton",CloudMusic.Body)
-        CloudMusic.PrevPage:SetPos(winw-190,19)
+        CloudMusic.PrevPage:SetPos(winw-405,19)
         CloudMusic.PrevPage:SetSize(45,20)
         CloudMusic.PrevPage:SetColor(Color(255,255,255))
         CloudMusic.PrevPage:SetText("上一页")
         CloudMusic.PrevPage:SetVisible(false)
-        CloudMusic.PrevPage.DoClick = function()
-            if offset == 0 then return end
-            http.Fetch("http://music.163.com/api/search/pc?s="..CloudMusic.SearchForm.Input:GetValue().."&type=1&limit=100&offset="..offset-100, function(body)
+        function CloudMusic.PrevPage:DoClick()
+            if offset == 0 then self:SetDisabled(true) return end
+            http.Post("http://music.163.com/api/search/pc", {
+                ["s"] = searchWord,
+                ["type"] = "1",
+                ["limit"] = "100",
+                ["offset"] = tostring(offset-100)
+            },function(body)
                 local json = util.JSONToTable(body)
                 if not json or json["code"] ~= 200 or json["result"]["songs"] == nil then
-                    Derma_Message("换页失败", "错误", "好的")
+                    SetDMUISkin(Derma_Message("换页失败", "错误", "好的"))
                     return
                 end
                 CloudMusic.NextPage:SetDisabled(false)
@@ -600,23 +615,28 @@ if CLIENT then
                         Thumbnail = track["album"]["picUrl"]
                     })
                 end
-            end, function()Derma_Message("换页失败", "错误", "好的") end)
+            end, function()SetDMUISkin(Derma_Message("换页失败", "错误", "好的")) end)
         end
         function CloudMusic.PrevPage:Paint(w,h)
             draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
         end
         CloudMusic.NextPage = vgui.Create("DButton",CloudMusic.Body)
-        CloudMusic.NextPage:SetPos(winw-140,19)
+        CloudMusic.NextPage:SetPos(winw-355,19)
         CloudMusic.NextPage:SetSize(45,20)
         CloudMusic.NextPage:SetColor(Color(255,255,255))
         CloudMusic.NextPage:SetText("下一页")
         CloudMusic.NextPage:SetVisible(false)
-        CloudMusic.NextPage.DoClick = function()
-            if offset+100 > songCount then return end
-            http.Fetch("http://music.163.com/api/search/pc?s="..CloudMusic.SearchForm.Input:GetValue().."&type=1&limit=100&offset="..offset+100, function(body)
+        function CloudMusic.NextPage:DoClick()
+            if offset+100 > songCount then self:SetDisabled(true) return end
+            http.Post("http://music.163.com/api/search/pc", {
+                ["s"] = searchWord,
+                ["type"] = "1",
+                ["limit"] = "100",
+                ["offset"] = tostring(offset+100)
+            },function(body)
                 local json = util.JSONToTable(body)
                 if not json or json["code"] ~= 200 or json["result"]["songs"] == nil then
-                    Derma_Message("换页失败", "错误", "好的")
+                    SetDMUISkin(Derma_Message("换页失败", "错误", "好的"))
                     return
                 end
                 CloudMusic.PrevPage:SetDisabled(false)
@@ -646,7 +666,7 @@ if CLIENT then
                         Thumbnail = track["album"]["picUrl"]
                     })
                 end
-            end, function()Derma_Message("换页失败", "错误", "好的") end)
+            end, function()SetDMUISkin(Derma_Message("换页失败", "错误", "好的")) end)
         end
         function CloudMusic.NextPage:Paint(w,h)
             draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
@@ -668,16 +688,19 @@ if CLIENT then
         end
         function CloudMusic.Songlist:ShowMenu()
             local menu = DermaMenu("")
+            menu:AddOption("播放",function()
+                CloudMusic:Play(CloudMusic.Songs[self:GetSelectedLine()])
+            end):SetIcon("icon16/transmit.png")
             menu:AddOption("添加到播放列表",function()
                 CloudMusic.Playlist:AddMusic(CloudMusic.Songs[self:GetSelectedLine()])
             end):SetIcon("icon16/add.png")
             menu:AddOption("复制歌曲ID",function()
                 SetClipboardText(CloudMusic.Songs[self:GetSelectedLine()].ID)
-                Derma_Message("已复制到剪贴板", "复制成功", "好的")
+                SetDMUISkin(Derma_Message("已复制到剪贴板", "复制成功", "好的"))
             end):SetIcon("icon16/page_copy.png")
             menu:AddOption("复制歌曲URL",function()
                 SetClipboardText("https://music.163.com/song/media/outer/url?id="..CloudMusic.Songs[self:GetSelectedLine()].ID)
-                Derma_Message("已复制到剪贴板", "复制成功", "好的")
+                SetDMUISkin(Derma_Message("已复制到剪贴板", "复制成功", "好的"))
             end):SetIcon("icon16/page_white_copy.png")
             menu:AddSpacer()
             menu:AddOption("将选中歌曲添加到播放列表",function()
@@ -715,11 +738,11 @@ if CLIENT then
             end):SetIcon("icon16/transmit.png")
             menu:AddOption("复制歌曲ID",function()
                 SetClipboardText(self.Songs[self:GetSelectedLine()].ID)
-                Derma_Message("已复制到剪贴板", "复制成功", "好的")
+                SetDMUISkin(Derma_Message("已复制到剪贴板", "复制成功", "好的"))
             end):SetIcon("icon16/page_copy.png")
             menu:AddOption("复制歌曲URL",function()
                 SetClipboardText("https://music.163.com/song/media/outer/url?id="..self.Songs[self:GetSelectedLine()].ID)
-                Derma_Message("已复制到剪贴板", "复制成功", "好的")
+                SetDMUISkin(Derma_Message("已复制到剪贴板", "复制成功", "好的"))
             end):SetIcon("icon16/page_white_copy.png")
             menu:AddSpacer()
             menu:AddOption("删除选中歌曲",function()
@@ -765,21 +788,29 @@ if CLIENT then
             CloudMusic.Playlist.Songs = {}
         end
         CloudMusic.Playlist:Sync()
-        function CloudMusic:Play(id)
-            if buffering then return end
-            if #self.Playlist.Songs == 0 then
-                notification.AddLegacy("歌曲列表为空", NOTIFY_GENERIC, 3)
-                return
-            end
-            if id and self.Playlist.Songs[id] then
-                self.CurrentPlaying = self.Playlist.Songs[id]
-            end
-            if not self.CurrentPlaying then
-                self.CurrentPlaying = self.Playlist.Songs[1]
+        function CloudMusic:Play(song)
+            if buffering or song == nil then return end
+            if type(song) == "number" then
+                if #self.Playlist.Songs == 0 then
+                    notification.AddLegacy("歌曲列表为空", NOTIFY_GENERIC, 3)
+                    return
+                end
+                if self.Playlist.Songs[song] then
+                    self.CurrentPlaying = self.Playlist.Songs[song]
+                end
+                if not self.CurrentPlaying then
+                    self.CurrentPlaying = self.Playlist.Songs[1]
+                end
+            elseif type(song) == "table" then
+                self.CurrentPlaying = song
             end
             self.Player.Thumbnail:SetHTML([[
                 <body style="margin:0;">
                     <img src="]]..self.CurrentPlaying.Thumbnail..[[" style="width:100%;height:100%;"/>
+                    <script>
+                        window.onmousedown = function() {return false;}
+                        window.onkeydown = function() {return false;}
+                    </script>
                 </body>
             ]])
             self.HUD:RunJavascript([[
@@ -1064,7 +1095,7 @@ if CLIENT then
         CloudMusic.Player.CopyLink:SetText("复制链接")
         CloudMusic.Player.CopyLink.DoClick = function()
             SetClipboardText("https://music.163.com/song/media/outer/url?id="..CloudMusic.CurrentPlaying.ID..".mp3")
-            Derma_Message("已复制到剪贴板", "复制成功", "好的")
+            SetDMUISkin(Derma_Message("已复制到剪贴板", "复制成功", "好的"))
         end
         function CloudMusic.Player.CopyLink:Paint(w,h)
             draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
@@ -1086,9 +1117,9 @@ if CLIENT then
         function CloudMusic.Player.VolumeEnchance:Think()
             self:SetText(GetSettings("CloudMusicVolumeEnchance") and "关闭音量增强" or "开启音量增强")
             if CloudMusic.Volume >= 1 then
-                if GetSettings("CloudMusicVolumeEnchance") and CloudMusic.Volume ~= 1.5 then
-                    CloudMusic.Volume = 1.5
-                    SetSettings("CloudMusicVolume",1.5)
+                if GetSettings("CloudMusicVolumeEnchance") and CloudMusic.Volume ~= 2 then
+                    CloudMusic.Volume = 2
+                    SetSettings("CloudMusicVolume",2)
                 end
             else
                 self:SetVisible(false)
@@ -1122,6 +1153,7 @@ if CLIENT then
                             body { word-break:keep-all; white-space:nowrap; font-family:'Microsoft YaHei',黑体; color:white; transition:all .3s linear; -webkit-transition:all .3s linear; overflow:hidden; }
                             body.hide { opacity:0; -webkit-opacity:0; }
                         </style>
+                        <style id="custom"></style>
                     </head>
                     <body class="hide">
                         <div class="hud">
@@ -1225,6 +1257,10 @@ if CLIENT then
                         function setHudPos(pos) {
                             document.getElementsByClassName("hud")[0].className = "hud " + pos;
                         }
+                        function setCustomCSS(css) {
+                            console.log("CSS:" + css);
+                            document.getElementById("custom").innerHTML = css;
+                        }
                         function show() {
                             setPercent(0);
                             document.body.className = "";
@@ -1247,6 +1283,7 @@ if CLIENT then
                 setUnplayedColor(]]..progressUnplayed.r..[[,]]..progressUnplayed.g..[[,]]..progressUnplayed.b..[[);
                 setPlayedColor(]]..progressPlayed.r..[[,]]..progressPlayed.g..[[,]]..progressPlayed.b..[[)
                 setHudPos("]]..currentHudPos..[[");
+                setCustomCSS("]]..GetSettings("CloudMusicHUDCustomCSS")..[[");
             ]])
         end
         function CloudMusic.HUD:Think()
@@ -1258,7 +1295,7 @@ if CLIENT then
                 return
             end
             if IsValid(CloudMusic.CurrentChannel) then
-                if CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_PLAYING or CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_STALLED then
+                if CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_PLAYING or CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_STALLED or CloudMusic.Settings.HUDCustomCSS.Focused then
                     if self.State ~= "SHOW" then
                         self:RunJavascript("show()")
                         self.State = "SHOW"
@@ -1346,8 +1383,9 @@ if CLIENT then
             draw.DrawText("HUD位置", "CloudMusicText", 295, 32, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
             draw.DrawText("界面颜色", "CloudMusicSmallTitle", 5, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("玩家列表", "CloudMusicSmallTitle", 170, 112, GetSettings("CloudMusicTextColor"))
+            draw.DrawText("自定义HUD CSS", "CloudMusicSmallTitle", 375, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("本播放器由Texas制作，感谢淡定WackoD在界面开发遇到一个问题时的提示以及开发3D外放时的帮助\n歌词功能使用了Cloudflare Worker进行简化处理", "CloudMusicText", w/2, h-64, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_CENTER)
-            draw.DrawText("版本 1.4.2", "CloudMusicText", 5, winh-49, GetSettings("CloudMusicTextColor"))
+            draw.DrawText("版本 1.4.3", "CloudMusicText", 5, winh-49, GetSettings("CloudMusicTextColor"))
         end
         function CloudMusic.Settings:Think()
             if currentShowingPage == "Main" and (self:GetPos()) < winw then
@@ -1415,7 +1453,7 @@ if CLIENT then
         end
         function CloudMusic.Settings.A3D:OnChange(val)
             if ULib ~= nil and not ULib.ucl.query(LocalPlayer(),"cloudmusic3d") and val then
-                Derma_Message("你没有权限开启外放", "无权限", "好的")
+                SetDMUISkin(Derma_Message("你没有权限开启外放", "无权限", "好的"))
                 self:SetChecked(false)
                 return
             end
@@ -1538,11 +1576,11 @@ if CLIENT then
             end):SetIcon("icon16/user_delete.png")
             menu:AddOption("复制玩家名称",function()
                 SetClipboardText(self.Users[self:GetSelectedLine()].Name)
-                Derma_Message("已复制到剪贴板", "复制成功", "好的")
+                SetDMUISkin(Derma_Message("已复制到剪贴板", "复制成功", "好的"))
             end):SetIcon("icon16/page_copy.png")
             menu:AddOption("复制Steam64ID",function()
                 SetClipboardText(self.Users[self:GetSelectedLine()].ID)
-                Derma_Message("已复制到剪贴板", "复制成功", "好的")
+                SetDMUISkin(Derma_Message("已复制到剪贴板", "复制成功", "好的"))
             end):SetIcon("icon16/page_white_copy.png")
             menu:AddSpacer()
             menu:AddOption("将所有黑名单玩家移出",function()
@@ -1577,6 +1615,25 @@ if CLIENT then
         CloudMusic.Settings.BlacklistUser.Users = GetSettings("CloudMusicBlacklistUsers")
         if CloudMusic.Settings.BlacklistUser.Users == nil then
             CloudMusic.Settings.BlacklistUser.Users = {}
+        end
+        CloudMusic.Settings.HUDCustomCSS = vgui.Create("DTextEntry",CloudMusic.Settings)
+        CloudMusic.Settings.HUDCustomCSS:SetPos(375,130)
+        CloudMusic.Settings.HUDCustomCSS:SetSize(400,250)
+        CloudMusic.Settings.HUDCustomCSS:SetMultiline(true)
+        CloudMusic.Settings.HUDCustomCSS:SetValue(GetSettings("CloudMusicHUDCustomCSS"))
+        function CloudMusic.Settings.HUDCustomCSS:OnGetFocus()
+            self.Focused = true
+        end
+        function CloudMusic.Settings.HUDCustomCSS:OnLoseFocus()
+            self.Focused = false
+        end
+        function CloudMusic.Settings.HUDCustomCSS:OnChange()
+            local text = self:GetValue()
+            print("Set CSS to "..text)
+            SetSettings("CloudMusicHUDCustomCSS",text)
+            CloudMusic.HUD:RunJavascript([[
+                setCustomCSS("]]..text:JavascriptSafe()..[[");
+            ]])
         end
         CloudMusic.Settings.Colors = vgui.Create("DScrollPanel",CloudMusic.Settings)
         CloudMusic.Settings.Colors:SetPos(5,130)
