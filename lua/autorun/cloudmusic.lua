@@ -1899,7 +1899,7 @@ if SERVER then
     end)
     hook.Add("PlayerSay","CloudMusic_PlayerSay",function(ply,text,team,dead)
         if string.lower(text) == "!cloudmusic" or string.lower(text) == "!cm" then
-            return true
+            return ""
         end
     end)
     net.Receive("CloudMusicReqSync", function()
