@@ -1258,7 +1258,6 @@ if CLIENT then
                             document.getElementsByClassName("hud")[0].className = "hud " + pos;
                         }
                         function setCustomCSS(css) {
-                            console.log("CSS:" + css);
                             document.getElementById("custom").innerHTML = css;
                         }
                         function show() {
@@ -1629,7 +1628,6 @@ if CLIENT then
         end
         function CloudMusic.Settings.HUDCustomCSS:OnChange()
             local text = self:GetValue()
-            print("Set CSS to "..text)
             SetSettings("CloudMusicHUDCustomCSS",text)
             CloudMusic.HUD:RunJavascript([[
                 setCustomCSS("]]..text:JavascriptSafe()..[[");
