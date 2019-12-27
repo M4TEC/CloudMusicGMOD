@@ -1150,6 +1150,7 @@ if CLIENT then
                             .song-info > .artist { font-size:12px; }
                             .lyric > span:first-of-type { font-size:18px; }
                             .lyric > span:last-of-type { font-size:12px; }
+                            .hud.bottom-left .lyric, .hud.bottom-right .lyric { position: relative; height: 0; top: -85px; }
                             body { word-break:keep-all; white-space:nowrap; font-family:'Microsoft YaHei',黑体; color:white; transition:all .3s linear; -webkit-transition:all .3s linear; overflow:hidden; }
                             body.hide { opacity:0; -webkit-opacity:0; }
                         </style>
@@ -1384,7 +1385,7 @@ if CLIENT then
             draw.DrawText("玩家列表", "CloudMusicSmallTitle", 170, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("自定义HUD CSS", "CloudMusicSmallTitle", 375, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("本播放器由Texas制作，感谢淡定WackoD在界面开发遇到一个问题时的提示以及开发3D外放时的帮助\n歌词功能使用了Cloudflare Worker进行简化处理", "CloudMusicText", w/2, h-64, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_CENTER)
-            draw.DrawText("版本 1.4.3", "CloudMusicText", 5, winh-49, GetSettings("CloudMusicTextColor"))
+            draw.DrawText("版本 1.4.4", "CloudMusicText", 5, winh-49, GetSettings("CloudMusicTextColor"))
         end
         function CloudMusic.Settings:Think()
             if currentShowingPage == "Main" and (self:GetPos()) < winw then
@@ -1538,7 +1539,7 @@ if CLIENT then
         CloudMusic.Settings.BlacklistUser:AddColumn("玩家名称")
         CloudMusic.Settings.BlacklistUser:AddColumn("SteamID64")
         CloudMusic.Settings.BlacklistUser:SetPos(170,130)
-        CloudMusic.Settings.BlacklistUser:SetSize(200,250)
+        CloudMusic.Settings.BlacklistUser:SetSize(300,250)
         CloudMusic.Settings.BlacklistUser:SetMultiSelect(false)
         CloudMusic.Settings.BlacklistUser:SetSortable(false)
         DisableListHeader(CloudMusic.Settings.BlacklistUser)
@@ -1616,7 +1617,7 @@ if CLIENT then
             CloudMusic.Settings.BlacklistUser.Users = {}
         end
         CloudMusic.Settings.HUDCustomCSS = vgui.Create("DTextEntry",CloudMusic.Settings)
-        CloudMusic.Settings.HUDCustomCSS:SetPos(375,130)
+        CloudMusic.Settings.HUDCustomCSS:SetPos(475,130)
         CloudMusic.Settings.HUDCustomCSS:SetSize(400,250)
         CloudMusic.Settings.HUDCustomCSS:SetMultiline(true)
         CloudMusic.Settings.HUDCustomCSS:SetValue(GetSettings("CloudMusicHUDCustomCSS"))
