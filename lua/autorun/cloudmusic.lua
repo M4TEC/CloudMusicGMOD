@@ -64,7 +64,8 @@ if CLIENT then
             ["CloudMusicHudPos"] = "top-left",
             ["CloudMusicHUDCustomCSS"] = "",
             ["CloudMusicBlacklistUsers"] = {},
-            ["CloudMusicPlaylist"] = {}
+            ["CloudMusicPlaylist"] = {},
+            ["CloudMusicUserToken"] = ""
         }
         local function SaveSettings(set)
             local temp = table.Copy(settings)
@@ -194,6 +195,7 @@ if CLIENT then
         local errorCount = 0
         local currentHudPos = GetSettings("CloudMusicHudPos")
         local buffering = false
+        local userDetail = {}
         local function TextMessage(str)
             msg = str
             timer.Simple(10, function()msg = "" end)
@@ -249,6 +251,37 @@ if CLIENT then
                 CloudMusic.CurrentChannel:Play()
             end
         end
+        local function SongPlayError()
+            notification.AddLegacy("无法播放 "..CloudMusic.CurrentPlaying.Name, NOTIFY_ERROR, 3)
+            if errorCount == 5 then
+                notification.AddLegacy("由于已经连续5次无法播放，将停止尝试", NOTIFY_GENERIC, 3)
+                errorCount = 0
+                return
+            end
+            errorCount = errorCount + 1
+            if currentMode == "ListLoop" then
+                CloudMusic:Next()
+            elseif currentMode == "List" then
+                local last = false
+                for i=1,#CloudMusic.Playlist.Songs do
+                    local song = CloudMusic.Playlist.Songs[i]
+                    if song.ID == CloudMusic.CurrentPlaying.ID then
+                        if i == #CloudMusic.Playlist.Songs then
+                            last = true
+                        end
+                        break
+                    end
+                end
+                if not last then
+                    CloudMusic:Next()
+                end
+            elseif currentMode == "Random" then
+                CloudMusic:Play(math.random(1, #CloudMusic.Playlist.Songs))
+            elseif currentMode == "SingleLoop" then
+                notification.AddLegacy("由于 "..CloudMusic.CurrentPlaying.Name.." 无法播放，已切到下一首", NOTIFY_GENERIC, 3)
+                CloudMusic:Next()
+            end
+        end
         local function SendSyncData()
             if not GetSettings("CloudMusic3D") then return end
             net.Start("CloudMusic3DSync")
@@ -260,17 +293,62 @@ if CLIENT then
             net.WriteFloat(IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetTime() or 0)
             net.SendToServer()
         end
+        local function TokenRequest(url,callback,fail,method,data)
+            if method == nil then method = "GET" end
+            local headers = GetSettings("CloudMusicUserToken") == "" and {} or {
+                ["Cookie"] = "MUSIC_U="..GetSettings("CloudMusicUserToken")
+            }
+            if method == "GET" then
+                http.Fetch(url,callback,fail,headers)
+            elseif method == "POST" then
+                http.Post(url,data,callback,fail,headers)
+            else
+                if type(fail) == "function" then
+                    fail()
+                end
+            end
+        end
+        local function GetSongURL(id,callback,finally)
+            TokenRequest("https://api.texl.top/node/song/url?id="..id,function(body)
+                local result = util.JSONToTable(body)
+                if result == nil then
+                    if type(callback) == "function" then
+                        callback("https://music.163.com/song/media/outer/url?id="..id..".mp3")
+                    end
+                    if type(finally) == "function" then
+                        finally()
+                    end
+                    return
+                end
+                if type(callback) == "function" then
+                    callback(result["data"][1]["url"])
+                end
+                if type(finally) == "function" then
+                    finally()
+                end
+            end,function()
+                if type(callback) == "function" then
+                    callback("https://music.163.com/song/media/outer/url?id="..id..".mp3")
+                end
+                if type(finally) == "function" then
+                    finally()
+                end
+            end)
+        end
         local function Create3DChannel(id,ply)
             if not ply.ChannelCreating then
                 ply.ChannelCreating = true
-                sound.PlayURL("https://music.163.com/song/media/outer/url?id="..id,"noblock 3d",function(station)
+                GetSongURL(id,function(url)
+                    sound.PlayURL(url,"noblock 3d",function(station)
+                        if IsValid(station) then
+                            ply.MusicChannel = station
+                            ply.MusicChannelID = id
+                            net.Start("CloudMusicReqSync")
+                            net.SendToServer()
+                        end
+                    end)
+                end,function()
                     ply.ChannelCreating = false
-                    if IsValid(station) then
-                        ply.MusicChannel = station
-                        ply.MusicChannelID = id
-                        net.Start("CloudMusicReqSync")
-                        net.SendToServer()
-                    end
                 end)
             end
         end
@@ -294,6 +372,114 @@ if CLIENT then
                 SetDMUISkin(v)
             end
         end
+        local function ShowOverlay()
+            if IsValid(CloudMusic.Overlay) and CloudMusic.Overlay.Remove then
+                CloudMusic.Overlay:Remove()
+            end
+            CloudMusic.Overlay = vgui.Create("DPanel",CloudMusic)
+            CloudMusic.Overlay:SetBackgroundColor(Color(0,0,0))
+            if GetSettings("CloudMusicAnimation") then
+                CloudMusic.Overlay:SetAlpha(1)
+            end
+            function CloudMusic.Overlay:Think()
+                if GetSettings("CloudMusicAnimation") then
+                    if not self.IsHiding and self:GetAlpha() < 76.5 then
+                        self:SetAlpha(self:GetAlpha()+76.5/10)
+                    elseif self.IsHiding then
+                        if self:GetAlpha() <= 0 then
+                            self:Remove()
+                        else
+                            self:SetAlpha(self:GetAlpha()-76.5/10)
+                        end
+                    end
+                end
+            end
+            CloudMusic.Overlay:SetPos(0,0)
+            CloudMusic.Overlay:SetSize(winw,winh)
+        end
+        local function HideOverlay()
+            CloudMusic.Overlay.IsHiding = true
+        end
+        local function InitUserInfo()
+            CloudMusic.Login:SetVisible(false)
+            CloudMusic.Logout:SetVisible(false)
+            CloudMusic.UserInfo:SetVisible(false)
+            CloudMusic.ShowRecommend:SetVisible(false)
+            CloudMusic.ShowUserPlaylists:SetVisible(false)
+            if GetSettings("CloudMusicUserToken") == "" then
+                CloudMusic.Login:SetVisible(true)
+            else
+                TokenRequest("https://api.texl.top/node/login/status",function(body)
+                    userDetail = util.JSONToTable(body)
+                    if userDetail == nil or userDetail["code"] ~= 200 then
+                        notification.AddLegacy("获取网易云用户信息失败", NOTIFY_ERROR, 3)
+                        return
+                    end
+                    userDetail = userDetail["profile"]
+                    CloudMusic.Logout:SetVisible(true)
+                    CloudMusic.ShowRecommend:SetVisible(true)
+                    CloudMusic.ShowUserPlaylists:SetVisible(true)
+                    CloudMusic.UserInfo:SetVisible(true)
+                    CloudMusic.UserInfo:SetHTML([[
+                        <html>
+                            <head>
+                                <style>
+                                    * {
+                                        cursor:normal;
+                                    }
+                                    body {
+                                        color:white;
+                                        font-family:微软雅黑,黑体;
+                                        margin:0;
+                                        width:100px;
+                                        height:30px;
+                                        overflow:hidden;
+                                        text-align:right;
+                                    }
+                                    .user-info {
+                                        position:absolute;
+                                        height:30px;
+                                        top:0;
+                                        left:0;
+                                        right:30px;
+                                        text-align:right;
+                                        display:inline-block;
+                                    }
+                                    .user-info .welcome {
+                                        position:absolute;
+                                        right:0;
+                                        top:-2px;
+                                        font-size:10px;
+                                    }
+                                    .user-info .username {
+                                        position:absolute;
+                                        bottom:-2px;
+                                        right:0;
+                                    }
+                                    img {
+                                        position:absolute;
+                                        top:0;
+                                        right:0;
+                                        width:30px;
+                                        height:30px;
+                                    }
+                                </style>
+                            </head>
+                            <body>
+                                <div class="user-info">
+                                    <span class="welcome">欢迎，</span>
+                                    <span class="username">]]..userDetail["nickname"]..[[</span>
+                                </div>
+                                <img src="]]..userDetail["avatarUrl"]..[["
+                            </body>
+                        </html>
+                    ]])
+                end,function()
+                    notification.AddLegacy("获取网易云用户信息失败", NOTIFY_ERROR, 3)
+                    CloudMusic.Login:SetVisible(true)
+                end)
+            end
+        end
         function ToggleCloudMusic()
             if CloudMusic:IsVisible() then
                 targetOpacity = 0
@@ -302,10 +488,11 @@ if CLIENT then
                     CloudMusic:SetVisible(false)
                 end
             else
-                if system.GetCountry() ~= "CN" and not CloudMusic.CountryWarnShown then
+                --Disabled because of some reason
+                --[[if system.GetCountry() ~= "CN" and not CloudMusic.CountryWarnShown then
                     CloudMusic.CountryWarnShown = true
                     SetDMUISkin(Derma_Message("检测到你不是中文系统，你可能不在中国，可能会无法正常使用\nDetected you are not using Chinese system, you might not in China, so Cloud Music Player probably unable to use.", "Cloud Music", "OK"))
-                end
+                end]]
                 CloudMusic.Settings.BlacklistUser:Sync()
                 CloudMusic.Playlist:Sync()
                 CloudMusic:MakePopup()
@@ -411,6 +598,139 @@ if CLIENT then
                 self:SetColor(GetSettings("CloudMusicTitleBarTextColor"))
             end
         end
+        CloudMusic.Login = vgui.Create("DButton",CloudMusic)
+        CloudMusic.Login:SetSize(45,20)
+        CloudMusic.Login:SetPos(winw-75,30/2-20/2)
+        CloudMusic.Login:SetText("登录")
+        function CloudMusic.Login:Paint(w,h)
+            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
+        end
+        function CloudMusic.Login:DoClick()
+            ShowOverlay()
+            CloudMusic.LoginPrompt = vgui.Create("DPanel",CloudMusic)
+            CloudMusic.LoginPrompt:SetZPos(2)
+            CloudMusic.LoginPrompt:SetPos(winw/2-300/2,(winh-30)/2-400/2+30)
+            CloudMusic.LoginPrompt:SetSize(300,400)
+            function CloudMusic.LoginPrompt:Think()
+                if self.Mode == "Email" then
+                    self.Username:SetPos(10,75)
+                    self.Username:SetSize(300-20,20)
+                else
+                    self.Username:SetPos(35,75)
+                    self.Username:SetSize(300-45,20)
+                end
+            end
+            CloudMusic.LoginPrompt.Title = vgui.Create("DLabel",CloudMusic.LoginPrompt)
+            CloudMusic.LoginPrompt.Title:SetText("登录网易云帐号")
+            CloudMusic.LoginPrompt.Title:SetFont("CloudMusicTitle")
+            CloudMusic.LoginPrompt.Title:SetColor(Color(0,0,0))
+            CloudMusic.LoginPrompt.Title:SetContentAlignment(5)
+            CloudMusic.LoginPrompt.Title:SetPos(0,0)
+            CloudMusic.LoginPrompt.Title:SetSize(300,50)
+            CloudMusic.LoginPrompt.Mode = "Email"
+            CloudMusic.LoginPrompt.ToggleMode = vgui.Create("DButton",CloudMusic.LoginPrompt)
+            CloudMusic.LoginPrompt.ToggleMode:SetPos(10,50)
+            CloudMusic.LoginPrompt.ToggleMode:SetSize(300-20,20)
+            function CloudMusic.LoginPrompt.ToggleMode:Think()
+                if CloudMusic.LoginPrompt.Mode == "Email" then
+                    self:SetText("使用手机号登录")
+                else
+                    self:SetText("使用邮箱登录")
+                end
+            end
+            function CloudMusic.LoginPrompt.ToggleMode:DoClick()
+                if CloudMusic.LoginPrompt.Mode == "Email" then
+                    CloudMusic.LoginPrompt.Mode = "Phone"
+                else
+                    CloudMusic.LoginPrompt.Mode = "Email"
+                end
+                CloudMusic.LoginPrompt.Username:SetValue("")
+            end
+            CloudMusic.LoginPrompt.PhoneAreaNum = vgui.Create("DTextEntry",CloudMusic.LoginPrompt)
+            CloudMusic.LoginPrompt.PhoneAreaNum:SetPos(10,75)
+            CloudMusic.LoginPrompt.PhoneAreaNum:SetSize(20,20)
+            CloudMusic.LoginPrompt.PhoneAreaNum:SetValue(86)
+            CloudMusic.LoginPrompt.PhoneAreaNum:SetNumeric(true)
+            CloudMusic.LoginPrompt.Username = vgui.Create("DTextEntry",CloudMusic.LoginPrompt)
+            CloudMusic.LoginPrompt.Username:SetPos(10,75)
+            CloudMusic.LoginPrompt.Username:SetSize(300-20,20)
+            function CloudMusic.LoginPrompt.Username:Think()
+                if CloudMusic.LoginPrompt.Mode == "Email" then
+                    self:SetPlaceholderText("电子邮件")
+                else
+                    self:SetPlaceholderText("手机号")
+                end
+            end
+            CloudMusic.LoginPrompt.Password = vgui.Create("DTextEntry",CloudMusic.LoginPrompt)
+            CloudMusic.LoginPrompt.Password:SetPos(10,100)
+            CloudMusic.LoginPrompt.Password:SetSize(300-20,20)
+            CloudMusic.LoginPrompt.Password:SetPlaceholderText("密码")
+            CloudMusic.LoginPrompt.Login = vgui.Create("DButton",CloudMusic.LoginPrompt)
+            CloudMusic.LoginPrompt.Login:SetPos(10,125)
+            CloudMusic.LoginPrompt.Login:SetSize(300-20,20)
+            CloudMusic.LoginPrompt.Login:SetText("登录")
+            function CloudMusic.LoginPrompt.Login:DoClick()
+                if CloudMusic.LoginPrompt.Mode == "Email" then
+                    TokenRequest("https://api.texl.top/node/login?email="..CloudMusic.LoginPrompt.Username:GetValue():JavascriptSafe().."&password="..CloudMusic.LoginPrompt.Password:GetValue():JavascriptSafe(),function(body)
+                        local result = util.JSONToTable(body)
+                        if result["code"] ~= 200 then
+                            SetDMUISkin(Derma_Message("登录失败\n"..result["msg"], "错误", "好的"))
+                            return
+                        end
+                        SetSettings("CloudMusicUserToken",result["token"])
+                        SetDMUISkin(Derma_Message("登录成功！欢迎回来，"..result["profile"]["nickname"], "欢迎", "好的"))
+                        InitUserInfo()
+                        HideOverlay()
+                        CloudMusic.LoginPrompt:Remove()
+                    end,function()
+                        SetDMUISkin(Derma_Message("登录失败", "错误", "好的"))
+                    end)
+                else
+                    TokenRequest("https://api.texl.top/node/login/cellphone?phone="..CloudMusic.LoginPrompt.Username:GetValue():JavascriptSafe().."&password="..CloudMusic.LoginPrompt.Password:GetValue():JavascriptSafe().."&countrycode="..CloudMusic.LoginPrompt.PhoneAreaNum:GetValue(),function(body)
+                        local result = util.JSONToTable(body)
+                        if result["code"] ~= 200 then
+                            SetDMUISkin(Derma_Message("登录失败\n"..result["msg"], "错误", "好的"))
+                            return
+                        end
+                        SetSettings("CloudMusicUserToken",result["token"])
+                        SetDMUISkin(Derma_Message("登录成功！欢迎回来，"..result["profile"]["nickname"], "欢迎", "好的"))
+                        InitUserInfo()
+                        HideOverlay()
+                        CloudMusic.LoginPrompt:Remove()
+                    end,function()
+                        SetDMUISkin(Derma_Message("登录失败", "错误", "好的"))
+                    end)
+                end
+            end
+            CloudMusic.LoginPrompt.Cancel = vgui.Create("DButton",CloudMusic.LoginPrompt)
+            CloudMusic.LoginPrompt.Cancel:SetPos(10,400-30)
+            CloudMusic.LoginPrompt.Cancel:SetSize(300-20,20)
+            CloudMusic.LoginPrompt.Cancel:SetText("取消")
+            function CloudMusic.LoginPrompt.Cancel:DoClick()
+                CloudMusic.LoginPrompt:Remove()
+                HideOverlay()
+            end
+        end
+        CloudMusic.Logout = vgui.Create("DButton",CloudMusic)
+        CloudMusic.Logout:SetSize(45,20)
+        CloudMusic.Logout:SetPos(winw-75,30/2-20/2)
+        CloudMusic.Logout:SetText("注销")
+        function CloudMusic.Logout:Paint(w,h)
+            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
+        end
+        function CloudMusic.Logout:DoClick()
+            TokenRequest("https://api.texl.top/node/logout",function(body)
+                SetSettings("CloudMusicUserToken","")
+                InitUserInfo()
+                SetDMUISkin(Derma_Message("注销成功","成功","好的"))
+            end,function()
+                SetDMUISkin(Derma_Message("注销失败","错误","好的"))
+            end)
+        end
+        CloudMusic.UserInfo = vgui.Create("DHTML",CloudMusic)
+        CloudMusic.UserInfo:SetPos(winw-80-winw*0.5,0)
+        CloudMusic.UserInfo:SetSize(winw*0.5,30)
+        CloudMusic.UserInfo:SetMouseInputEnabled(false)
         CloudMusic.Body = vgui.Create("DPanel",CloudMusic)
         CloudMusic.Body:SetPos(0,30)
         CloudMusic.Body:SetSize(winw,winh-30)
@@ -471,30 +791,7 @@ if CLIENT then
                 end
                 CloudMusic.PrevPage:SetVisible(false)
                 CloudMusic.NextPage:SetVisible(false)
-                CloudMusic.Songs = {}
-                if #CloudMusic.Songlist:GetLines() ~= 0 then
-                    for i=1,#CloudMusic.Songlist:GetLines() do
-                        CloudMusic.Songlist:RemoveLine(i)
-                    end
-                end
-                for i=1,#obj["result"]["tracks"] do
-                    local track = obj["result"]["tracks"][i]
-                    local artist = ""
-                    for j=1,#track["artists"] do
-                        if j ~= 1 then
-                            artist = artist .. ", "
-                        end
-                        artist = artist .. track["artists"][j]["name"]
-                    end
-                    CloudMusic.Songlist:AddLine(track["name"],artist,track["album"]["name"],track["id"])
-                    table.insert(CloudMusic.Songs,{
-                        Name = track["name"],
-                        Artist = artist,
-                        Album = track["album"]["name"],
-                        ID = track["id"],
-                        Thumbnail = track["album"]["picUrl"]
-                    })
-                end
+                CloudMusic.Songlist:Resolve(obj["result"]["tracks"])
             end, function()SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的")) end)
         end
         function CloudMusic.SonglistForm.Fetch:Paint(w,h)
@@ -540,34 +837,53 @@ if CLIENT then
                 offset = 0
                 songCount = json["result"]["songCount"]
                 searchWord = CloudMusic.SearchForm.Input:GetValue()
-                CloudMusic.Songs = {}
-                if #CloudMusic.Songlist:GetLines() ~= 0 then
-                    for i=1,#CloudMusic.Songlist:GetLines() do
-                        CloudMusic.Songlist:RemoveLine(i)
-                    end
-                end
-                for i=1,#json["result"]["songs"] do
-                    local track = json["result"]["songs"][i]
-                    local artist = ""
-                    for j=1,#track["artists"] do
-                        if j ~= 1 then
-                            artist = artist .. ", "
-                        end
-                        artist = artist .. track["artists"][j]["name"]
-                    end
-                    CloudMusic.Songlist:AddLine(track["name"],artist,track["album"]["name"],track["id"])
-                    table.insert(CloudMusic.Songs,{
-                        Name = track["name"],
-                        Artist = artist,
-                        Album = track["album"]["name"],
-                        ID = track["id"],
-                        Thumbnail = track["album"]["picUrl"]
-                    })
-                end
+                CloudMusic.Songlist:Resolve(json["result"]["songs"])
             end, function()SetDMUISkin(Derma_Message("搜索失败", "错误", "好的")) end)
         end
         function CloudMusic.SearchForm.Search:Paint(w,h)
             draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
+        end
+        CloudMusic.ShowRecommend = vgui.Create("DButton",CloudMusic.Body)
+        CloudMusic.ShowRecommend:SetPos(250,19)
+        CloudMusic.ShowRecommend:SetSize(60,20)
+        CloudMusic.ShowRecommend:SetColor(Color(255,255,255))
+        CloudMusic.ShowRecommend:SetText("每日推荐")
+        function CloudMusic.ShowRecommend:Paint(w,h)
+            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
+        end
+        function CloudMusic.ShowRecommend:DoClick()
+            TokenRequest("https://api.texl.top/node/recommend/songs",function(body)
+                local result = util.JSONToTable(body)
+                if result["code"] ~= 200 then
+                    notification.AddLegacy("无法获取每日推荐", NOTIFY_ERROR, 3)
+                    return
+                end
+                CloudMusic.Songlist:Resolve(result["recommend"])
+            end,function()
+                notification.AddLegacy("无法获取每日推荐", NOTIFY_ERROR, 3)
+            end)
+        end
+        CloudMusic.ShowUserPlaylists = vgui.Create("DButton",CloudMusic.Body)
+        CloudMusic.ShowUserPlaylists:SetPos(315,19)
+        CloudMusic.ShowUserPlaylists:SetSize(60,20)
+        CloudMusic.ShowUserPlaylists:SetColor(Color(255,255,255))
+        CloudMusic.ShowUserPlaylists:SetText("我的歌单")
+        function CloudMusic.ShowUserPlaylists:Paint(w,h)
+            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
+        end
+        function CloudMusic.ShowUserPlaylists:DoClick()
+            TokenRequest("https://api.texl.top/node/user/playlist?uid="..userDetail["userId"],function(body)
+                local result = util.JSONToTable(body)
+                if result["code"] ~= 200 then
+                    notification.AddLegacy("无法获取用户歌单", NOTIFY_ERROR, 3)
+                    return
+                end
+                CloudMusic.Playlists:Resolve(result["playlist"])
+                CloudMusic.Songlist:SetVisible(false)
+                CloudMusic.Playlists:SetVisible(true)
+            end,function()
+                notification.AddLegacy("无法获取用户歌单", NOTIFY_ERROR, 3)
+            end)
         end
         CloudMusic.PrevPage = vgui.Create("DButton",CloudMusic.Body)
         CloudMusic.PrevPage:SetPos(winw-405,19)
@@ -591,30 +907,7 @@ if CLIENT then
                 CloudMusic.NextPage:SetDisabled(false)
                 offset = offset - 100
                 if offset == 0 then CloudMusic.PrevPage:SetDisabled(true) end
-                CloudMusic.Songs = {}
-                if #CloudMusic.Songlist:GetLines() ~= 0 then
-                    for i=1,#CloudMusic.Songlist:GetLines() do
-                        CloudMusic.Songlist:RemoveLine(i)
-                    end
-                end
-                for i=1,#json["result"]["songs"] do
-                    local track = json["result"]["songs"][i]
-                    local artist = ""
-                    for j=1,#track["artists"] do
-                        if j ~= 1 then
-                            artist = artist .. ", "
-                        end
-                        artist = artist .. track["artists"][j]["name"]
-                    end
-                    CloudMusic.Songlist:AddLine(track["name"],artist,track["album"]["name"],track["id"])
-                    table.insert(CloudMusic.Songs,{
-                        Name = track["name"],
-                        Artist = artist,
-                        Album = track["album"]["name"],
-                        ID = track["id"],
-                        Thumbnail = track["album"]["picUrl"]
-                    })
-                end
+                CloudMusic.Songlist:Resolve(json["result"]["songs"])
             end, function()SetDMUISkin(Derma_Message("换页失败", "错误", "好的")) end)
         end
         function CloudMusic.PrevPage:Paint(w,h)
@@ -642,30 +935,7 @@ if CLIENT then
                 CloudMusic.PrevPage:SetDisabled(false)
                 offset = offset + 100
                 if offset+100 > songCount then CloudMusic.NextPage:SetDisabled(true) end
-                CloudMusic.Songs = {}
-                if #CloudMusic.Songlist:GetLines() ~= 0 then
-                    for i=1,#CloudMusic.Songlist:GetLines() do
-                        CloudMusic.Songlist:RemoveLine(i)
-                    end
-                end
-                for i=1,#json["result"]["songs"] do
-                    local track = json["result"]["songs"][i]
-                    local artist = ""
-                    for j=1,#track["artists"] do
-                        if j ~= 1 then
-                            artist = artist .. ", "
-                        end
-                        artist = artist .. track["artists"][j]["name"]
-                    end
-                    CloudMusic.Songlist:AddLine(track["name"],artist,track["album"]["name"],track["id"])
-                    table.insert(CloudMusic.Songs,{
-                        Name = track["name"],
-                        Artist = artist,
-                        Album = track["album"]["name"],
-                        ID = track["id"],
-                        Thumbnail = track["album"]["picUrl"]
-                    })
-                end
+                CloudMusic.Songlist:Resolve(json["result"]["songs"])
             end, function()SetDMUISkin(Derma_Message("换页失败", "错误", "好的")) end)
         end
         function CloudMusic.NextPage:Paint(w,h)
@@ -685,6 +955,33 @@ if CLIENT then
         end
         function CloudMusic.Songlist:OnRowRightClick(lineID, line)
             self:ShowMenu()
+        end
+        function CloudMusic.Songlist:Resolve(tracks)
+            if tracks == nil then SetDMUISkin(Derma_Message("歌单为空", "空歌单", "好的")) end
+            CloudMusic.Songs = {}
+            if #self:GetLines() ~= 0 then
+                for i=1,#self:GetLines() do
+                    self:RemoveLine(i)
+                end
+            end
+            for i=1,#tracks do
+                local track = tracks[i]
+                local artist = ""
+                for j=1,#track["artists"] do
+                    if j ~= 1 then
+                        artist = artist .. ", "
+                    end
+                    artist = artist .. track["artists"][j]["name"]
+                end
+                self:AddLine(track["name"],artist,track["album"]["name"],track["id"])
+                table.insert(CloudMusic.Songs,{
+                    Name = track["name"],
+                    Artist = artist,
+                    Album = track["album"]["name"],
+                    ID = track["id"],
+                    Thumbnail = track["album"]["picUrl"]
+                })
+            end
         end
         function CloudMusic.Songlist:ShowMenu()
             local menu = DermaMenu("")
@@ -715,6 +1012,91 @@ if CLIENT then
                 end
             end):SetIcon("icon16/book_add.png")
             SetUISkin(menu)
+            menu:Open()
+        end
+        CloudMusic.Playlists = vgui.Create("DListView",CloudMusic.Body)
+        CloudMusic.Playlists:AddColumn("歌单名")
+        CloudMusic.Playlists:AddColumn("作者")
+        CloudMusic.Playlists:AddColumn("歌曲数")
+        CloudMusic.Playlists:AddColumn("歌单ID"):SetMaxWidth(100)
+        CloudMusic.Playlists:SetSortable(false)
+        CloudMusic.Playlists:SetPos(5,44)
+        CloudMusic.Playlists:SetSize(winw-315,winh-149)
+        DisableListHeader(CloudMusic.Playlists)
+        function CloudMusic.Playlists:DoDoubleClick(id, line)
+            http.Fetch("http://music.163.com/api/playlist/detail?id="..line:GetColumnText(4), function(json)
+                local obj = util.JSONToTable(json)
+                if obj["code"] ~= 200 then
+                    SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的"))
+                    return
+                end
+                CloudMusic.PrevPage:SetVisible(false)
+                CloudMusic.NextPage:SetVisible(false)
+                CloudMusic.Songlist:Resolve(obj["result"]["tracks"])
+                CloudMusic.Songlist:SetVisible(true)
+                self:SetVisible(false)
+            end, function()SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的")) end)
+        end
+        function CloudMusic.Playlists:OnRowRightClick(lineID, line)
+            self:ShowMenu()
+        end
+        function CloudMusic.Playlists:Resolve(playlists)
+            if #self:GetLines() ~= 0 then
+                for i=1,#self:GetLines() do
+                    self:RemoveLine(i)
+                end
+            end
+            for _,v in ipairs(playlists) do
+                self:AddLine(v["name"],v["creator"]["nickname"],v["trackCount"],v["id"])
+            end
+        end
+        function CloudMusic.Playlists:ShowMenu()
+            local menu = DermaMenu("")
+            menu:AddOption("打开",function()
+                http.Fetch("http://music.163.com/api/playlist/detail?id="..self:GetSelected()[1]:GetColumnText("4"), function(json)
+                    local obj = util.JSONToTable(json)
+                    if obj["code"] ~= 200 then
+                        SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的"))
+                        return
+                    end
+                    CloudMusic.PrevPage:SetVisible(false)
+                    CloudMusic.NextPage:SetVisible(false)
+                    CloudMusic.Songlist:Resolve(obj["result"]["tracks"])
+                    CloudMusic.Songlist:SetVisible(true)
+                    self:SetVisible(false)
+                end, function()SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的")) end)
+            end):SetIcon("icon16/transmit.png")
+            menu:AddOption("将歌单内歌曲添加到播放列表",function()
+                http.Fetch("http://music.163.com/api/playlist/detail?id="..songlist, function(json)
+                    local obj = util.JSONToTable(json)
+                    if obj["code"] ~= 200 then
+                        SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的"))
+                        return
+                    end
+                    CloudMusic.PrevPage:SetVisible(false)
+                    CloudMusic.NextPage:SetVisible(false)
+                    for _,v in ipairs(obj["result"]["tracks"]) do
+                        local artist = ""
+                        for j=1,#track["artists"] do
+                            if j ~= 1 then
+                                artist = artist .. ", "
+                            end
+                            artist = artist .. track["artists"][j]["name"]
+                        end
+                        CloudMusic.Playlist:AddMusic({
+                            Name = track["name"],
+                            Artist = artist,
+                            Album = track["album"]["name"],
+                            ID = track["id"],
+                            Thumbnail = track["album"]["picUrl"]
+                        })
+                    end
+                end, function()SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的")) end)
+            end):SetIcon("icon16/book_add.png")
+            menu:AddOption("复制歌单ID",function()
+                SetClipboardText(self:GetSelected()[1]:GetColumnText(4))
+                SetDMUISkin(Derma_Message("已复制到剪贴板", "复制成功", "好的"))
+            end):SetIcon("icon16/page_copy.png")
             menu:Open()
         end
         CloudMusic.Playlist = vgui.Create("DListView",CloudMusic.Body)
@@ -824,46 +1206,22 @@ if CLIENT then
             end
             local cId = self.CurrentPlaying.ID
             buffering = true
-            sound.PlayURL("https://music.163.com/song/media/outer/url?id="..cId..".mp3", "noblock", function(station)
+            GetSongURL(cId,function(url)
+                sound.PlayURL(url, "noblock", function(station)
+                    buffering = false
+                    if IsValid(station) then
+                        if self.CurrentPlaying.ID == cId and not IsValid(self.CurrentChannel) then
+                            station:Play()
+                            self.CurrentChannel = station
+                            FetchLyric()
+                        end
+                    else
+                        SongPlayError()
+                    end
+                    SendSyncData()
+                end)
+            end,function()
                 buffering = false
-                if IsValid(station) then
-                    if self.CurrentPlaying.ID == cId and not IsValid(self.CurrentChannel) then
-                        station:Play()
-                        self.CurrentChannel = station
-                        FetchLyric()
-                    end
-                else
-                    notification.AddLegacy("无法播放 "..self.CurrentPlaying.Name, NOTIFY_ERROR, 3)
-                    if errorCount == 5 then
-                        notification.AddLegacy("由于已经连续5次无法播放，将停止尝试", NOTIFY_GENERIC, 3)
-                        errorCount = 0
-                        return
-                    end
-                    errorCount = errorCount + 1
-                    if currentMode == "ListLoop" then
-                        self:Next()
-                    elseif currentMode == "List" then
-                        local last = false
-                        for i=1,#self.Playlist.Songs do
-                            local song = self.Playlist.Songs[i]
-                            if song.ID == self.CurrentPlaying.ID then
-                                if i == #self.Playlist.Songs then
-                                    last = true
-                                end
-                                break
-                            end
-                        end
-                        if not last then
-                            self:Next()
-                        end
-                    elseif currentMode == "Random" then
-                        self:Play(math.random(1, #self.Playlist.Songs))
-                    elseif currentMode == "SingleLoop" then
-                        notification.AddLegacy("由于 "..self.CurrentPlaying.Name.." 无法播放，已切到下一首", NOTIFY_GENERIC, 3)
-                        self:Next()
-                    end
-                end
-                SendSyncData()
             end)
         end
         function CloudMusic:Next()
@@ -1385,7 +1743,7 @@ if CLIENT then
             draw.DrawText("玩家列表", "CloudMusicSmallTitle", 170, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("自定义HUD CSS", "CloudMusicSmallTitle", 375, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("本播放器由Texas制作，感谢淡定WackoD在界面开发遇到一个问题时的提示以及开发3D外放时的帮助\n歌词功能使用了Cloudflare Worker进行简化处理", "CloudMusicText", w/2, h-64, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_CENTER)
-            draw.DrawText("版本 1.4.4", "CloudMusicText", 5, winh-49, GetSettings("CloudMusicTextColor"))
+            draw.DrawText("版本 1.5.0", "CloudMusicText", 5, winh-49, GetSettings("CloudMusicTextColor"))
         end
         function CloudMusic.Settings:Think()
             if currentShowingPage == "Main" and (self:GetPos()) < winw then
@@ -1765,8 +2123,10 @@ if CLIENT then
             SetUISkin(CloudMusic)
         end
         CloudMusic.Songs = {}
+        CloudMusic.Playlists:SetVisible(false)
         CloudMusic:SetAlpha(0)
         CloudMusic:SetVisible(false)
+        InitUserInfo()
         local didPlayerPaused = false
         hook.Add("PreCleanupMap","CloudMusic_PreCleanup",function()
             if IsValid(CloudMusic.CurrentChannel) then
