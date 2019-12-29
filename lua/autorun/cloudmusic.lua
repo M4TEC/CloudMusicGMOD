@@ -2210,13 +2210,6 @@ if CLIENT then
         CloudMusicInitOnce = true
     end
     hook.Add("InitPostEntity", "CloudMusic_Init", Init)
-    hook.Add("OnPlayerChat","CloudMusic_PlayerChat",function(ply,text,team,dead)
-        if ply ~= LocalPlayer() then return end
-        if string.lower(text) == "!cloudmusic" or string.lower(text) == "!cm" then
-            ToggleCloudMusic()
-            return true
-        end
-    end)
     concommand.Add("cloudmusic", function()
         ToggleCloudMusic()
     end, nil, "打开网易云播放器")
@@ -2258,6 +2251,8 @@ if SERVER then
     end)
     hook.Add("PlayerSay","CloudMusic_PlayerSay",function(ply,text,team,dead)
         if string.lower(text) == "!cloudmusic" or string.lower(text) == "!cm" then
+            net.Start("ToggleCloudMusic")
+            net.Send(ply)
             return ""
         end
     end)
