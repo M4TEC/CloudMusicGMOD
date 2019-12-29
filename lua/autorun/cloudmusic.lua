@@ -1067,7 +1067,7 @@ if CLIENT then
                 end, function()SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的")) end)
             end):SetIcon("icon16/transmit.png")
             menu:AddOption("将歌单内歌曲添加到播放列表",function()
-                http.Fetch("http://music.163.com/api/playlist/detail?id="..songlist, function(json)
+                http.Fetch("http://music.163.com/api/playlist/detail?id="..self:GetSelected()[1]:GetColumnText("4"), function(json)
                     local obj = util.JSONToTable(json)
                     if obj["code"] ~= 200 then
                         SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的"))
