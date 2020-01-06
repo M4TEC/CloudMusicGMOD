@@ -1511,6 +1511,9 @@ if CLIENT then
                             .lyric > span:first-of-type { font-size:18px; }
                             .lyric > span:last-of-type { font-size:12px; }
                             .hud.bottom-left .lyric, .hud.bottom-right .lyric { position: relative; height: 0; top: -85px; }
+                            .hud.top-right .circle-bar, .hud.bottom-right .circle-bar { float: right; }
+                            .hud.top-right .song-info, .hud.bottom-right .song-info { text-align: right; position: absolute; right: 41px; }
+                            .hud.top-right .lyric, .hud.bottom-right .lyric { margin-top: 16px; }
                             body { word-break:keep-all; white-space:nowrap; font-family:'Microsoft YaHei',黑体; color:white; transition:all .3s linear; -webkit-transition:all .3s linear; overflow:hidden; }
                             body.hide { opacity:0; -webkit-opacity:0; }
                         </style>
@@ -1743,7 +1746,7 @@ if CLIENT then
             draw.DrawText("HUD位置", "CloudMusicText", 295, 32, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
             draw.DrawText("界面颜色", "CloudMusicSmallTitle", 5, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("玩家列表", "CloudMusicSmallTitle", 170, 112, GetSettings("CloudMusicTextColor"))
-            draw.DrawText("自定义HUD CSS", "CloudMusicSmallTitle", 375, 112, GetSettings("CloudMusicTextColor"))
+            draw.DrawText("自定义HUD CSS", "CloudMusicSmallTitle", 475, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("本播放器由Texas制作，感谢淡定WackoD在界面开发遇到一个问题时的提示以及开发3D外放时的帮助\n歌词功能使用了Cloudflare Worker进行简化处理", "CloudMusicText", w/2, h-64, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_CENTER)
             draw.DrawText("版本 1.5.0", "CloudMusicText", 5, winh-49, GetSettings("CloudMusicTextColor"))
         end
