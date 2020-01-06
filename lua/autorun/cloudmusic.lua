@@ -336,7 +336,7 @@ if CLIENT then
             end)
         end
         local function Create3DChannel(id,ply)
-            if not ply.ChannelCreating then
+            if IsValid(ply) and not ply.ChannelCreating then
                 ply.ChannelCreating = true
                 GetSongURL(id,function(url)
                     sound.PlayURL(url,"noblock 3d",function(station)
@@ -409,7 +409,7 @@ if CLIENT then
             if GetSettings("CloudMusicUserToken") == "" then
                 CloudMusic.Login:SetVisible(true)
             else
-                TokenRequest("https://api.texl.top/node/login/status",function(body)
+                TokenRequest("https://api.texl.top/node/login/status?u="..LocalPlayer():SteamID64(),function(body)
                     userDetail = util.JSONToTable(body)
                     if userDetail == nil or userDetail["code"] ~= 200 then
                         notification.AddLegacy("获取网易云用户信息失败", NOTIFY_ERROR, 3)
@@ -671,7 +671,7 @@ if CLIENT then
             CloudMusic.LoginPrompt.Login:SetText("登录")
             function CloudMusic.LoginPrompt.Login:DoClick()
                 if CloudMusic.LoginPrompt.Mode == "Email" then
-                    TokenRequest("https://api.texl.top/node/login?email="..CloudMusic.LoginPrompt.Username:GetValue():JavascriptSafe().."&password="..CloudMusic.LoginPrompt.Password:GetValue():JavascriptSafe(),function(body)
+                    TokenRequest("https://api.texl.top/node/login?email="..CloudMusic.LoginPrompt.Username:GetValue():JavascriptSafe().."&password="..CloudMusic.LoginPrompt.Password:GetValue():JavascriptSafe().."&u="..LocalPlayer():SteamID64(),function(body)
                         local result = util.JSONToTable(body)
                         if result["code"] ~= 200 then
                             SetDMUISkin(Derma_Message("登录失败\n"..result["msg"], "错误", "好的"))
@@ -686,7 +686,7 @@ if CLIENT then
                         SetDMUISkin(Derma_Message("登录失败", "错误", "好的"))
                     end)
                 else
-                    TokenRequest("https://api.texl.top/node/login/cellphone?phone="..CloudMusic.LoginPrompt.Username:GetValue():JavascriptSafe().."&password="..CloudMusic.LoginPrompt.Password:GetValue():JavascriptSafe().."&countrycode="..CloudMusic.LoginPrompt.PhoneAreaNum:GetValue(),function(body)
+                    TokenRequest("https://api.texl.top/node/login/cellphone?phone="..CloudMusic.LoginPrompt.Username:GetValue():JavascriptSafe().."&password="..CloudMusic.LoginPrompt.Password:GetValue():JavascriptSafe().."&countrycode="..CloudMusic.LoginPrompt.PhoneAreaNum:GetValue().."&u="..LocalPlayer():SteamID64(),function(body)
                         local result = util.JSONToTable(body)
                         if result["code"] ~= 200 then
                             SetDMUISkin(Derma_Message("登录失败\n"..result["msg"], "错误", "好的"))
@@ -719,7 +719,7 @@ if CLIENT then
             draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
         end
         function CloudMusic.Logout:DoClick()
-            TokenRequest("https://api.texl.top/node/logout",function(body)
+            TokenRequest("https://api.texl.top/node/logout?u="..LocalPlayer():SteamID64(),function(body)
                 SetSettings("CloudMusicUserToken","")
                 InitUserInfo()
                 SetDMUISkin(Derma_Message("注销成功","成功","好的"))
@@ -852,7 +852,7 @@ if CLIENT then
             draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
         end
         function CloudMusic.ShowRecommend:DoClick()
-            TokenRequest("https://api.texl.top/node/recommend/songs",function(body)
+            TokenRequest("https://api.texl.top/node/recommend/songs?u="..LocalPlayer():SteamID64(),function(body)
                 local result = util.JSONToTable(body)
                 if result["code"] ~= 200 then
                     notification.AddLegacy("无法获取每日推荐", NOTIFY_ERROR, 3)
@@ -1136,8 +1136,10 @@ if CLIENT then
             end):SetIcon("icon16/page_delete.png")
             menu:AddSpacer()
             menu:AddOption("清空列表",function()
-                self.Songs = {}
-                self:Sync()
+                SetDMUISkin(Derma_Query("此操作无法撤回，你确定吗？","清空播放列表","确定",function()
+                    self.Songs = {}
+                    self:Sync()
+                end,"算了"))
             end):SetIcon("icon16/delete.png")
             SetUISkin(menu)
             menu:Open()
@@ -2175,7 +2177,7 @@ if CLIENT then
             local volume = net.ReadFloat()
             local id = net.ReadString()
             local time = net.ReadFloat()
-            if p == LocalPlayer() then return end
+            if p == LocalPlayer() or not IsValid(p) then return end
             for _,v in pairs(CloudMusic.Settings.BlacklistUser.Users) do
                 if v.ID == p:SteamID64() then
                     return
