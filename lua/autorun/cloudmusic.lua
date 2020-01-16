@@ -48,6 +48,8 @@ if CLIENT then
             ["CloudMusicHUDFFT"] = false,
             ["CloudMusicVolume"] = 1,
             ["CloudMusicVolumeEnchance"] = false,
+            ["CloudMusicLyricCentered"] = false,
+            ["CloudMusicLyricSize"] = 18,
             ["CloudMusicHUDTextColor"] = Color(255,255,255),
             ["CloudMusicHUDProgressUnplayedColor"] = Color(255,255,255),
             ["CloudMusicHUDProgressPlayedColor"] = Color(102,204,255),
@@ -293,18 +295,49 @@ if CLIENT then
             net.WriteFloat(IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetTime() or 0)
             net.SendToServer()
         end
-        local function TokenRequest(url,callback,fail,method,data)
+        local function TokenRequest(url,callback,fail,finally,method,data)
             if method == nil then method = "GET" end
             local headers = GetSettings("CloudMusicUserToken") == "" and {} or {
                 ["Cookie"] = "MUSIC_U="..GetSettings("CloudMusicUserToken")
             }
             if method == "GET" then
-                http.Fetch(url,callback,fail,headers)
+                http.Fetch(url,function(body)
+                    if type(callback) == "function" then
+                        callback(body)
+                    end
+                    if type(finally) == "function" then
+                        finally()
+                    end
+                end,function()
+                    if type(fail) == "function" then
+                        fail()
+                    end
+                    if type(finally) == "function" then
+                        finally()
+                    end
+                end,headers)
             elseif method == "POST" then
-                http.Post(url,data,callback,fail,headers)
+                http.Post(url,data,function(body)
+                    if type(callback) == "function" then
+                        callback(body)
+                    end
+                    if type(finally) == "function" then
+                        finally()
+                    end
+                end,function()
+                    if type(fail) == "function" then
+                        fail()
+                    end
+                    if type(finally) == "function" then
+                        finally()
+                    end
+                end,headers)
             else
                 if type(fail) == "function" then
                     fail()
+                end
+                if type(finally) == "function" then
+                    finally()
                 end
             end
         end
@@ -667,6 +700,10 @@ if CLIENT then
             CloudMusic.LoginPrompt.Login:SetSize(300-20,20)
             CloudMusic.LoginPrompt.Login:SetText("登录")
             function CloudMusic.LoginPrompt.Login:DoClick()
+                CloudMusic.LoginPrompt.PhoneAreaNum:SetDisabled(true)
+                CloudMusic.LoginPrompt.Username:SetDisabled(true)
+                CloudMusic.LoginPrompt.Password:SetDisabled(true)
+                CloudMusic.LoginPrompt.Login:SetDisabled(true)
                 if CloudMusic.LoginPrompt.Mode == "Email" then
                     TokenRequest("https://api.texl.top/node/login?email="..CloudMusic.LoginPrompt.Username:GetValue():JavascriptSafe().."&password="..CloudMusic.LoginPrompt.Password:GetValue():JavascriptSafe().."&u="..LocalPlayer():SteamID64(),function(body)
                         local result = util.JSONToTable(body)
@@ -681,10 +718,19 @@ if CLIENT then
                         CloudMusic.LoginPrompt:Remove()
                     end,function()
                         SetDMUISkin(Derma_Message("登录失败", "错误", "好的"))
+                    end,function()
+                        CloudMusic.LoginPrompt.PhoneAreaNum:SetDisabled(false)
+                        CloudMusic.LoginPrompt.Username:SetDisabled(false)
+                        CloudMusic.LoginPrompt.Password:SetDisabled(false)
+                        CloudMusic.LoginPrompt.Login:SetDisabled(false)
                     end)
                 else
                     TokenRequest("https://api.texl.top/node/login/cellphone?phone="..CloudMusic.LoginPrompt.Username:GetValue():JavascriptSafe().."&password="..CloudMusic.LoginPrompt.Password:GetValue():JavascriptSafe().."&countrycode="..CloudMusic.LoginPrompt.PhoneAreaNum:GetValue().."&u="..LocalPlayer():SteamID64(),function(body)
                         local result = util.JSONToTable(body)
+                        if result == nil then
+                            SetDMUISkin(Derma_Message("登录失败", "错误", "好的"))
+                            return
+                        end
                         if result["code"] ~= 200 then
                             SetDMUISkin(Derma_Message("登录失败\n"..result["msg"], "错误", "好的"))
                             return
@@ -696,6 +742,11 @@ if CLIENT then
                         CloudMusic.LoginPrompt:Remove()
                     end,function()
                         SetDMUISkin(Derma_Message("登录失败", "错误", "好的"))
+                    end,function()
+                        CloudMusic.LoginPrompt.PhoneAreaNum:SetDisabled(false)
+                        CloudMusic.LoginPrompt.Username:SetDisabled(false)
+                        CloudMusic.LoginPrompt.Password:SetDisabled(false)
+                        CloudMusic.LoginPrompt.Login:SetDisabled(false)
                     end)
                 end
             end
@@ -790,12 +841,10 @@ if CLIENT then
             end
             TokenRequest("https://api.texl.top/node/user/subcount",function(body)
                 local json = util.JSONToTable(body)
-                print(body)
                 if json["code"] == 200 and IsValid(CloudMusic.UInfo) then
                     CloudMusic.UInfo.Details:AppendText("你订阅了"..json["djRadioCount"].."个电台\n收藏了"..json["mvCount"].."个MV\n关注了"..json["artistCount"].."个歌手\n创建了"..json["createDjRadioCount"].."个电台\n创建了"..json["createdPlaylistCount"].."个歌单\n收藏了"..json["subPlaylistCount"].."个歌单")
                 end
             end)
-            PrintTable(userDetail)
         end
         CloudMusic.User = vgui.Create("DHTML",CloudMusic)
         CloudMusic.User:SetPos(winw-80-95-winw*0.4,0)
@@ -853,7 +902,7 @@ if CLIENT then
                 SetDMUISkin(Derma_Message("请输入正确的歌单ID", "错误", "好的"))
                 return
             end
-            http.Fetch("https://api.texl.top/node/playlist/detail?id="..songlist, function(json)
+            http.Fetch("https://music.163.com/api/playlist/detail?id="..songlist, function(json)
                 local obj = util.JSONToTable(json)
                 if obj["code"] ~= 200 then
                     SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的"))
@@ -1289,11 +1338,6 @@ if CLIENT then
                     </script>
                 </body>
             ]])
-            self.HUD:RunJavascript([[
-                setThumbnail("]]..self.CurrentPlaying.Thumbnail..[[");
-                setSongname("]]..self.CurrentPlaying.Name:JavascriptSafe()..[[");
-                setArtist("]]..self.CurrentPlaying.Artist:JavascriptSafe()..[[");
-            ]])
             if IsValid(self.CurrentChannel) then
                 self.CurrentChannel:Stop()
                 self.CurrentChannel = nil
@@ -1310,6 +1354,11 @@ if CLIENT then
                             station:Play()
                             self.CurrentChannel = station
                             FetchLyric()
+                            self.HUD:RunJavascript([[
+                                setThumbnail("]]..self.CurrentPlaying.Thumbnail..[[");
+                                setSongname("]]..self.CurrentPlaying.Name:JavascriptSafe()..[[");
+                                setArtist("]]..self.CurrentPlaying.Artist:JavascriptSafe()..[[");
+                            ]])
                         end
                     else
                         SongPlayError()
@@ -1321,7 +1370,6 @@ if CLIENT then
             end)
         end
         function CloudMusic:Next()
-            print(self)
             if #self.Playlist.Songs == 0 then return end
             if self.CurrentPlaying then
                 local found = false
@@ -1607,15 +1655,19 @@ if CLIENT then
                             .circle-bar > .thumbnail { width:32px; height:32px; position:absolute; top:0px; left:0px; z-index:2; }
                             .song-info { display:inline-block; }
                             .song-info > .artist { font-size:12px; }
-                            .lyric > span:first-of-type { font-size:18px; }
-                            .lyric > span:last-of-type { font-size:12px; }
+                            .hud .lyric > span:first-of-type { font-size:18px; }
+                            .hud .lyric > span:last-of-type { font-size:12px; }
                             .hud.bottom-left .lyric, .hud.bottom-right .lyric { position: relative; height: 0; top: -85px; }
                             .hud.top-right .circle-bar, .hud.bottom-right .circle-bar { float: right; }
                             .hud.top-right .song-info, .hud.bottom-right .song-info { text-align: right; position: absolute; right: 41px; }
                             .hud.top-right .lyric, .hud.bottom-right .lyric { margin-top: 16px; }
                             body { word-break:keep-all; white-space:nowrap; font-family:'Microsoft YaHei',黑体; color:white; transition:all .3s linear; -webkit-transition:all .3s linear; overflow:hidden; }
                             body.hide { opacity:0; -webkit-opacity:0; }
+                            body > .lyric { position:fixed; bottom:0; width:100%; text-align:center; visibility:hidden; }
+                            body.center-lyric > .lyric { visibility:visible; }
+                            body.center-lyric .hud .lyric { visibility:hidden; }
                         </style>
+                        <style id="spec-lrc"></style>
                         <style id="custom"></style>
                     </head>
                     <body class="hide">
@@ -1635,6 +1687,11 @@ if CLIENT then
                                 <br/>
                                 <span></span>
                             </div>
+                        </div>
+                        <div class="lyric">
+                            <span></span>
+                            <br/>
+                            <span></span>
                         </div>
                         <script>
                         Element.prototype.css = function(property,value){
@@ -1696,13 +1753,17 @@ if CLIENT then
                             document.getElementsByClassName("artist")[0].innerText = artist;
                         }
                         function setLrc(first,second) {
-                            document.getElementsByClassName("lyric")[0].children[0].innerText = first;
-                            if (first == "") {
-                                document.getElementsByClassName("lyric")[0].children[0].innerHTML = "&nbsp;";
-                            }
-                            document.getElementsByClassName("lyric")[0].children[2].innerText = second;
-                            if (second == "") {
-                                document.getElementsByClassName("lyric")[0].children[2].innerHTML = "&nbsp;";
+                            var ls = document.getElementsByClassName("lyric");
+                            for (var i=0;i<ls.length;i++) {
+                                var el = ls[i];
+                                el.children[0].innerText = first;
+                                if (first == "") {
+                                    el.children[0].innerHTML = "&nbsp;";
+                                }
+                                el.children[2].innerText = second;
+                                if (second == "") {
+                                    el.children[2].innerHTML = "&nbsp;";
+                                }
                             }
                         }
                         function setTextColor(r,g,b) {
@@ -1723,13 +1784,23 @@ if CLIENT then
                         function setCustomCSS(css) {
                             document.getElementById("custom").innerHTML = css;
                         }
+                        function setLyricCentered(centered) {
+                            if (centered) {
+                                document.body.classList.add("center-lyric");
+                            } else {
+                                document.body.classList.remove("center-lyric");
+                            }
+                        }
+                        function setLyricSize(size) {
+                            document.getElementById("spec-lrc").innerHTML = "body > .lyric > span:first-of-type { font-size:"+size+"px; } body > .lyric > span:last-of-type { font-size:"+(size-6)+"px; }";
+                        }
                         function show() {
                             setPercent(0);
-                            document.body.className = "";
+                            document.body.classList.remove("hide");
                         }
                         function hide() {
                             setPercent(0);
-                            document.body.className = "hide";
+                            document.body.classList.add("hide");
                         }
                         function addCSS(css) {
                             var el = document.createElement("style");
@@ -1762,6 +1833,8 @@ if CLIENT then
                 setPlayedColor(]]..progressPlayed.r..[[,]]..progressPlayed.g..[[,]]..progressPlayed.b..[[)
                 setHudPos("]]..currentHudPos..[[");
                 setCustomCSS("]]..GetSettings("CloudMusicHUDCustomCSS")..[[");
+                setLyricCentered(]]..(GetSettings("CloudMusicLyricCentered") and "true" or "false")..[[);
+                setLyricSize(]]..GetSettings("CloudMusicLyricSize")..[[);
             ]])
             hook.Run("CloudMusicHUDReady")
         end
@@ -1859,12 +1932,13 @@ if CLIENT then
             draw.DrawText("启用动画", "CloudMusicText", 25, 90, GetSettings("CloudMusicTextColor"))
             draw.DrawText("打开3D外放", "CloudMusicText", 140, 30, GetSettings("CloudMusicTextColor"))
             draw.DrawText("屏蔽他人3D外放", "CloudMusicText", 140, 70, GetSettings("CloudMusicTextColor"))
-            draw.DrawText("HUD位置", "CloudMusicText", 295, 32, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
+            draw.DrawText("歌词置于游戏界面底部中央", "CloudMusicText", 140, 90, GetSettings("CloudMusicTextColor"))
+            draw.DrawText("HUD位置", "CloudMusicText", 345, 32, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
             draw.DrawText("界面颜色", "CloudMusicSmallTitle", 5, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("玩家列表", "CloudMusicSmallTitle", 170, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("自定义HUD CSS", "CloudMusicSmallTitle", 475, 112, GetSettings("CloudMusicTextColor"))
-            draw.DrawText("本播放器由Texas制作，感谢淡定WackoD在界面开发遇到一个问题时的提示以及开发3D外放时的帮助\n歌词功能使用了Cloudflare Worker进行简化处理", "CloudMusicText", w/2, h-64, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_CENTER)
-            draw.DrawText("版本 1.5.0 Beta 20200116", "CloudMusicText", 5, winh-49, GetSettings("CloudMusicTextColor"))
+            draw.DrawText("本播放器由Texas制作，歌词功能使用了Cloudflare Worker进行简化处理", "CloudMusicText", w/2, h-50, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_CENTER)
+            draw.DrawText("版本 1.5.0 Beta 20200117", "CloudMusicText", 5, winh-49, GetSettings("CloudMusicTextColor"))
         end
         function CloudMusic.Settings:Think()
             if currentShowingPage == "Main" and (self:GetPos()) < winw then
@@ -1887,7 +1961,7 @@ if CLIENT then
         CloudMusic.Settings.Back:SetSize(30,20)
         CloudMusic.Settings.Back:SetText("返回")
         CloudMusic.Settings.Back:SetColor(Color(255,255,255))
-        CloudMusic.Settings.Back.DoClick = function()currentShowingPage = "Main" end
+        CloudMusic.Settings.Back.DoClick = function()currentShowingPage = "Main"end
         function CloudMusic.Settings.Back:Paint(w,h)
             draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
         end
@@ -1982,8 +2056,20 @@ if CLIENT then
                 net.SendToServer()
             end
         end
+        CloudMusic.Settings.LyricCentered = vgui.Create("DCheckBox",CloudMusic.Settings)
+        CloudMusic.Settings.LyricCentered:SetPos(120,90)
+        CloudMusic.Settings.LyricCentered:SetChecked(GetSettings("CloudMusicLyricCentered"))
+        function CloudMusic.Settings.LyricCentered:OnChange(val)
+            SetSettings("CloudMusicLyricCentered", val)
+            CloudMusic.Settings.LyricSize:SetVisible(val)
+            if val then
+                CloudMusic.HUD:RunJavascript("setLyricCentered(true);")
+            else
+                CloudMusic.HUD:RunJavascript("setLyricCentered(false);")
+            end
+        end
         CloudMusic.Settings.HudPos = vgui.Create("DButton",CloudMusic.Settings)
-        CloudMusic.Settings.HudPos:SetPos(300,30)
+        CloudMusic.Settings.HudPos:SetPos(350,30)
         CloudMusic.Settings.HudPos:SetSize(45,20)
         CloudMusic.Settings.HudPos:SetColor(Color(255,255,255))
         function CloudMusic.Settings.HudPos:DoClick()
@@ -2012,6 +2098,21 @@ if CLIENT then
         end
         function CloudMusic.Settings.HudPos:Paint(w,h)
             draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
+        end
+        CloudMusic.Settings.LyricSize = vgui.Create("DNumSlider", CloudMusic.Settings)
+        CloudMusic.Settings.LyricSize:SetPos(330,90)
+        CloudMusic.Settings.LyricSize:SetText("歌词大小")
+        CloudMusic.Settings.LyricSize:SetSize(150,20)
+        CloudMusic.Settings.LyricSize:SetMin(18)
+        CloudMusic.Settings.LyricSize:SetMax(32)
+        CloudMusic.Settings.LyricSize:SetDefaultValue(18)
+        CloudMusic.Settings.LyricSize:SetValue(GetSettings("CloudMusicLyricSize"))
+        CloudMusic.Settings.LyricSize:SetVisible(GetSettings("CloudMusicLyricCentered"))
+        CloudMusic.Settings.LyricSize.OldValueChanged = CloudMusic.Settings.LyricSize.ValueChanged
+        function CloudMusic.Settings.LyricSize:ValueChanged(val)
+            SetSettings("CloudMusicLyricSize",val)
+            CloudMusic.HUD:RunJavascript([[setLyricSize(]]..val..[[);]])
+            self:OldValueChanged()
         end
         CloudMusic.Settings.BlacklistUser = vgui.Create("DListView",CloudMusic.Settings)
         CloudMusic.Settings.BlacklistUser:AddColumn("状态"):SetMaxWidth(25)
@@ -2218,15 +2319,15 @@ if CLIENT then
         function CloudMusic.Settings.Texas:Paint(w,h)
             draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
         end
-        CloudMusic.Settings.WackoD = vgui.Create("DButton",CloudMusic.Settings)
-        CloudMusic.Settings.WackoD:SetPos(winw/2+2.5,winh-66)
-        CloudMusic.Settings.WackoD:SetSize(100,20)
-        CloudMusic.Settings.WackoD:SetColor(Color(255,255,255))
-        CloudMusic.Settings.WackoD:SetText("联系淡定WackoD")
-        CloudMusic.Settings.WackoD.DoClick = function()
-            gui.OpenURL("https://steamcommunity.com/profiles/76561198046405253/")
+        CloudMusic.Settings.Donate = vgui.Create("DButton",CloudMusic.Settings)
+        CloudMusic.Settings.Donate:SetPos(winw/2+2.5,winh-66)
+        CloudMusic.Settings.Donate:SetSize(65,20)
+        CloudMusic.Settings.Donate:SetColor(Color(255,255,255))
+        CloudMusic.Settings.Donate:SetText("赞助作者")
+        CloudMusic.Settings.Donate.DoClick = function()
+            gui.OpenURL("http://texas.penguin-logistics.cn/donate")
         end
-        function CloudMusic.Settings.WackoD:Paint(w,h)
+        function CloudMusic.Settings.Donate:Paint(w,h)
             draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
         end
         --[[CloudMusic.Settings.Exusiai = vgui.Create("DHTML",CloudMusic.Settings)
@@ -2249,7 +2350,33 @@ if CLIENT then
         --Only support chromium, so using a fallback
         CloudMusic.Settings.LuoTianyi:SetHTML([[
             <body style="user-select:none;pointer-events:none;">
-                <img src="https://files.m4tec.org/index.php/s/8zJ3zwCLsW2MTia/preview" id="lty" style="position:absolute;bottom:5px;right:5px;max-height:50%;"/>
+                <style>
+                    .waifu {
+                        position:absolute;
+                        bottom:5px;
+                        right:5px;
+                        height:50%;
+                        width:fit-content;
+                    }
+                    .waifu > span {
+                        opacity:0.5;
+                        font-family:微软雅黑;
+                        font-size:12px;
+                        color:#66CCFF;
+                        position:absolute;
+                        left:0;
+                        right:0;
+                        bottom:100%;
+                        text-align:center;
+                    }
+                    .waifu > img {
+                        max-height:100%;
+                    }
+                </style>
+                <div class="waifu">
+                    <span>作者的老婆</span>
+                    <img src="https://files.m4tec.org/index.php/s/8zJ3zwCLsW2MTia/preview" id="lty"/>
+                </div>
                 <script>
                     window.onmousedown = function() {return false;}
                     window.onkeydown = function() {return false;}
