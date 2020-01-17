@@ -515,6 +515,43 @@ if CLIENT then
                 end)
             end
         end
+        local function ButtonPaint(self,w,h)
+            draw.RoundedBox(3, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
+        end
+        local function SetTopFormsDisabled(disabled)
+            CloudMusic.SonglistForm.Input:SetDisabled(disabled)
+            CloudMusic.SonglistForm.Fetch:SetDisabled(disabled)
+            CloudMusic.SearchForm.Input:SetDisabled(disabled)
+            CloudMusic.SearchForm.Search:SetDisabled(disabled)
+            CloudMusic.ShowUserPlaylists:SetDisabled(disabled)
+            CloudMusic.ShowRecommend:SetDisabled(disabled)
+        end
+        local function HttpGet(url,success,fail,headers,finally)
+            if headers == nil then headers = {} end
+            http.Fetch(url, function(body,size,headers,code)
+                success(body,size,headers,code)
+                finally()
+            end,function(error)
+                fail(error)
+                finally()
+            end, headers)
+        end
+        local function HttpPost(url,parameters,success,fail,headers,finally)
+            if headers == nil then headers = {} end
+            http.Post(url, parameters, function(body,size,headers,code)
+                success(body,size,headers,code)
+                finally()
+            end,function(error)
+                fail(error)
+                finally()
+            end, headers)
+        end
+        local function BodyMousePos()
+            local x,y,wx,wy = gui.MouseX(),gui.MouseY(),CloudMusic:GetPos()
+            x = x - wx
+            y = y - wy - 30
+            return x,y
+        end
         function ToggleCloudMusic()
             if CloudMusic:IsVisible() then
                 targetOpacity = 0
@@ -539,10 +576,8 @@ if CLIENT then
         CloudMusic:ShowCloseButton(false)
         CloudMusic:SetTitle("")
         function CloudMusic:Paint(w,h)
-            surface.SetDrawColor(GetSettings("CloudMusicBackgroundColor"))
-            surface.DrawRect(0, 0, w, h)
-            surface.SetDrawColor(GetSettings("CloudMusicTitleBarColor"))
-            surface.DrawRect(0, 0, winw, 30)
+            draw.RoundedBoxEx(8, 0, 30, winw, winh-30, GetSettings("CloudMusicBackgroundColor"), false, false, true, true)
+            draw.RoundedBoxEx(8, 0, 0, winw, 30, GetSettings("CloudMusicTitleBarColor"), true, true)
             draw.DrawText("网易云音乐", "CloudMusicTitle", 5, 3, GetSettings("CloudMusicTitleBarTextColor"))
             if msg ~= "" then draw.DrawText(msg, "CloudMusicText", 110, 13, GetSettings("CloudMusicTitleBarTextColor")) end
         end
@@ -550,8 +585,8 @@ if CLIENT then
         local dragStartY = 0
         function CloudMusic:Think()
             if not input.IsMouseDown(MOUSE_LEFT) and (isDragging or isProgDragging or isVolDragging) then
-                if IsValid(CloudMusic.BodyOverlay) and CloudMusic.BodyOverlay.Remove then
-                    CloudMusic.BodyOverlay:Remove()
+                if IsValid(self.BodyOverlay) and self.BodyOverlay.Remove then
+                    self.BodyOverlay:Remove()
                 end
                 isDragging = false
                 isProgDragging = false
@@ -559,18 +594,18 @@ if CLIENT then
                 SendSyncData()
             end
             if GetSettings("CloudMusicAnimation") then
-                if CloudMusic:GetAlpha() == 0 and targetOpacity == 0 then
-                    CloudMusic:SetVisible(false)
+                if self:GetAlpha() == 0 and targetOpacity == 0 then
+                    self:SetVisible(false)
                 end
-                if CloudMusic:GetAlpha() > targetOpacity then
-                    CloudMusic:SetAlpha(CloudMusic:GetAlpha()-25.5)
-                    if CloudMusic:GetAlpha() < 0 then
-                        CloudMusic:SetAlpha(0)
+                if self:GetAlpha() > targetOpacity then
+                    self:SetAlpha(self:GetAlpha()-25.5)
+                    if self:GetAlpha() < 0 then
+                        self:SetAlpha(0)
                     end
-                elseif CloudMusic:GetAlpha() < targetOpacity then
-                    CloudMusic:SetAlpha(CloudMusic:GetAlpha()+25.5)
-                    if CloudMusic:GetAlpha() > 255 then
-                        CloudMusic:SetAlpha(255)
+                elseif self:GetAlpha() < targetOpacity then
+                    self:SetAlpha(self:GetAlpha()+25.5)
+                    if self:GetAlpha() > 255 then
+                        self:SetAlpha(255)
                     end
                 end
             end
@@ -581,7 +616,7 @@ if CLIENT then
                 if nx > ScrW()-winw then nx = ScrW()-winw end
                 if ny < 0 then ny = 0 end
                 if ny > ScrH()-winh then ny = ScrH()-winh end
-                CloudMusic:SetPos(nx,ny)
+                self:SetPos(nx,ny)
             end
         end
         function CloudMusic:OnKeyCodePressed(key)
@@ -595,34 +630,33 @@ if CLIENT then
                 isDragging = true
                 dragStartX = x
                 dragStartY = y
-                if IsValid(CloudMusic.BodyOverlay) and CloudMusic.BodyOverlay.Remove then
-                    CloudMusic.BodyOverlay:Remove()
+                if IsValid(self.BodyOverlay) and self.BodyOverlay.Remove then
+                    self.BodyOverlay:Remove()
                 end
-                CloudMusic.BodyOverlay = vgui.Create("DPanel",CloudMusic)
-                CloudMusic.BodyOverlay:SetPaintBackground(false)
-                CloudMusic.BodyOverlay:Dock(FILL)
-                CloudMusic.BodyOverlay:SetZPos(2)
+                self.BodyOverlay = vgui.Create("DPanel",self)
+                self.BodyOverlay:SetPaintBackground(false)
+                self.BodyOverlay:Dock(FILL)
+                self.BodyOverlay:SetZPos(2)
             end
         end
         function CloudMusic:OnMouseReleased(key)
             isDragging = false
-            if IsValid(CloudMusic.BodyOverlay) and CloudMusic.BodyOverlay.Remove then
-                CloudMusic.BodyOverlay:Remove()
+            if IsValid(self.BodyOverlay) and self.BodyOverlay.Remove then
+                self.BodyOverlay:Remove()
             end
         end
         CloudMusic:SetSize(winw, winh)
         CloudMusic:SetPos(ScrW()/2-winw/2,ScrH()/2-winh/2)
         CloudMusic.Close = vgui.Create("DButton",CloudMusic)
-        CloudMusic.Close:SetSize(30,30)
-        CloudMusic.Close:SetPos(winw-30,0)
+        CloudMusic.Close:SetSize(24,24)
+        CloudMusic.Close:SetPos(winw-27,3)
         CloudMusic.Close:SetColor(Color(255,255,255))
         CloudMusic.Close:SetText("X")
         CloudMusic.Close:SetDrawBackground(false)
         CloudMusic.Close.DoClick = ToggleCloudMusic
         function CloudMusic.Close:Paint(w,h)
             if self:IsHovered() then
-                surface.SetDrawColor(255, 0, 0)
-                surface.DrawRect(0,0,w,h)
+                draw.RoundedBox(12, 0, 0, w, h, Color(255,0,0))
                 self:SetColor(Color(255,255,255))
             else
                 self:SetColor(GetSettings("CloudMusicTitleBarTextColor"))
@@ -632,9 +666,7 @@ if CLIENT then
         CloudMusic.Login:SetSize(45,20)
         CloudMusic.Login:SetPos(winw-75,30/2-20/2)
         CloudMusic.Login:SetText("登录")
-        function CloudMusic.Login:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.Login.Paint = ButtonPaint
         function CloudMusic.Login:DoClick()
             ShowOverlay()
             CloudMusic.LoginPrompt = vgui.Create("DPanel",CloudMusic)
@@ -763,9 +795,7 @@ if CLIENT then
         CloudMusic.Logout:SetSize(45,20)
         CloudMusic.Logout:SetPos(winw-80,30/2-20/2)
         CloudMusic.Logout:SetText("注销")
-        function CloudMusic.Logout:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.Logout.Paint = ButtonPaint
         function CloudMusic.Logout:DoClick()
             TokenRequest("https://api.texl.top/node/logout?u="..LocalPlayer():SteamID64(),function(body)
                 SetSettings("CloudMusicUserToken","")
@@ -779,9 +809,7 @@ if CLIENT then
         CloudMusic.UserInfo:SetSize(85,20)
         CloudMusic.UserInfo:SetPos(winw-80-90,30/2-20/2)
         CloudMusic.UserInfo:SetText("个人信息")
-        function CloudMusic.UserInfo:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.UserInfo.Paint = ButtonPaint
         function CloudMusic.UserInfo:DoClick()
             ShowOverlay()
             CloudMusic.UInfo = vgui.Create("DPanel",CloudMusic)
@@ -854,7 +882,7 @@ if CLIENT then
         CloudMusic.Body:SetPos(0,30)
         CloudMusic.Body:SetSize(winw,winh-30)
         function CloudMusic.Body:Paint(w,h)
-            draw.DrawText("Made by Texas ", "CloudMusicText", winw, 0, Color(202,202,202), TEXT_ALIGN_RIGHT)
+            draw.DrawText("Made by Texas", "CloudMusicText", winw-5, 0, Color(202,202,202), TEXT_ALIGN_RIGHT)
         end
         function CloudMusic.Body:Think()
             if currentShowingPage == "Settings" and (self:GetPos()) > -winw then
@@ -878,9 +906,7 @@ if CLIENT then
         CloudMusic.SettingsButton:SetColor(Color(255,255,255))
         CloudMusic.SettingsButton:SetText("设置")
         CloudMusic.SettingsButton.DoClick = function()currentShowingPage = "Settings"CloudMusic.Settings.BlacklistUser:Sync()end
-        function CloudMusic.SettingsButton:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.SettingsButton.Paint = ButtonPaint
         CloudMusic.SonglistForm = vgui.Create("DPanel",CloudMusic.Body)
         CloudMusic.SonglistForm:SetPos(5,5)
         CloudMusic.SonglistForm:SetSize(102,34)
@@ -902,7 +928,8 @@ if CLIENT then
                 SetDMUISkin(Derma_Message("请输入正确的歌单ID", "错误", "好的"))
                 return
             end
-            http.Fetch("https://music.163.com/api/playlist/detail?id="..songlist, function(json)
+            SetTopFormsDisabled(true)
+            httpGet("https://music.163.com/api/playlist/detail?id="..songlist, function(json)
                 local obj = util.JSONToTable(json)
                 if obj["code"] ~= 200 then
                     SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的"))
@@ -911,11 +938,11 @@ if CLIENT then
                 CloudMusic.PrevPage:SetVisible(false)
                 CloudMusic.NextPage:SetVisible(false)
                 CloudMusic.Songlist:Resolve(obj["result"]["tracks"])
-            end, function()SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的")) end)
+            end, function()SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的"))end,nil,function()
+                SetTopFormsDisabled(false)
+            end)
         end
-        function CloudMusic.SonglistForm.Fetch:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.SonglistForm.Fetch.Paint = ButtonPaint
         local offset = 0
         local songCount = 0
         local searchWord = ""
@@ -934,7 +961,8 @@ if CLIENT then
         CloudMusic.SearchForm.Search:SetColor(Color(255,255,255))
         CloudMusic.SearchForm.Search:SetText("搜索")
         CloudMusic.SearchForm.Search.DoClick = function()
-            http.Post("http://music.163.com/api/search/pc", {
+            SetTopFormsDisabled(true)
+            HttpPost("http://music.163.com/api/search/pc", {
                 ["s"] = CloudMusic.SearchForm.Input:GetValue(),
                 ["type"] = "1",
                 ["limit"] = "100"
@@ -957,20 +985,19 @@ if CLIENT then
                 songCount = json["result"]["songCount"]
                 searchWord = CloudMusic.SearchForm.Input:GetValue()
                 CloudMusic.Songlist:Resolve(json["result"]["songs"])
-            end, function()SetDMUISkin(Derma_Message("搜索失败", "错误", "好的")) end)
+            end, function()SetDMUISkin(Derma_Message("搜索失败", "错误", "好的")) end,nil,function()
+                SetTopFormsDisabled(false)
+            end)
         end
-        function CloudMusic.SearchForm.Search:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.SearchForm.Search.Paint = ButtonPaint
         CloudMusic.ShowRecommend = vgui.Create("DButton",CloudMusic.Body)
         CloudMusic.ShowRecommend:SetPos(250,19)
         CloudMusic.ShowRecommend:SetSize(60,20)
         CloudMusic.ShowRecommend:SetColor(Color(255,255,255))
         CloudMusic.ShowRecommend:SetText("每日推荐")
-        function CloudMusic.ShowRecommend:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.ShowRecommend.Paint = ButtonPaint
         function CloudMusic.ShowRecommend:DoClick()
+            SetTopFormsDisabled(true)
             TokenRequest("https://api.texl.top/node/recommend/songs?u="..LocalPlayer():SteamID64(),function(body)
                 local result = util.JSONToTable(body)
                 if result["code"] ~= 200 then
@@ -980,6 +1007,8 @@ if CLIENT then
                 CloudMusic.Songlist:Resolve(result["recommend"])
             end,function()
                 notification.AddLegacy("无法获取每日推荐", NOTIFY_ERROR, 3)
+            end,function()
+                SetTopFormsDisabled(false)
             end)
         end
         CloudMusic.ShowUserPlaylists = vgui.Create("DButton",CloudMusic.Body)
@@ -987,10 +1016,9 @@ if CLIENT then
         CloudMusic.ShowUserPlaylists:SetSize(60,20)
         CloudMusic.ShowUserPlaylists:SetColor(Color(255,255,255))
         CloudMusic.ShowUserPlaylists:SetText("我的歌单")
-        function CloudMusic.ShowUserPlaylists:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.ShowUserPlaylists.Paint = ButtonPaint
         function CloudMusic.ShowUserPlaylists:DoClick()
+            SetTopFormsDisabled(true)
             TokenRequest("https://api.texl.top/node/user/playlist?uid="..userDetail["userId"],function(body)
                 local result = util.JSONToTable(body)
                 if result["code"] ~= 200 then
@@ -1002,6 +1030,8 @@ if CLIENT then
                 CloudMusic.Playlists:SetVisible(true)
             end,function()
                 notification.AddLegacy("无法获取用户歌单", NOTIFY_ERROR, 3)
+            end,function()
+                SetTopFormsDisabled(false)
             end)
         end
         CloudMusic.PrevPage = vgui.Create("DButton",CloudMusic.Body)
@@ -1011,8 +1041,9 @@ if CLIENT then
         CloudMusic.PrevPage:SetText("上一页")
         CloudMusic.PrevPage:SetVisible(false)
         function CloudMusic.PrevPage:DoClick()
-            if offset == 0 then self:SetDisabled(true) return end
-            http.Post("http://music.163.com/api/search/pc", {
+            self:SetDisabled(true)
+            if offset == 0 then return end
+            HttpPost("http://music.163.com/api/search/pc", {
                 ["s"] = searchWord,
                 ["type"] = "1",
                 ["limit"] = "100",
@@ -1027,11 +1058,11 @@ if CLIENT then
                 offset = offset - 100
                 if offset == 0 then CloudMusic.PrevPage:SetDisabled(true) end
                 CloudMusic.Songlist:Resolve(json["result"]["songs"])
-            end, function()SetDMUISkin(Derma_Message("换页失败", "错误", "好的")) end)
+            end, function()SetDMUISkin(Derma_Message("换页失败", "错误", "好的")) end,nil,function()
+                self:SetDisabled(false)
+            end)
         end
-        function CloudMusic.PrevPage:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.PrevPage.Paint = ButtonPaint
         CloudMusic.NextPage = vgui.Create("DButton",CloudMusic.Body)
         CloudMusic.NextPage:SetPos(winw-355,19)
         CloudMusic.NextPage:SetSize(45,20)
@@ -1039,8 +1070,9 @@ if CLIENT then
         CloudMusic.NextPage:SetText("下一页")
         CloudMusic.NextPage:SetVisible(false)
         function CloudMusic.NextPage:DoClick()
-            if offset+100 > songCount then self:SetDisabled(true) return end
-            http.Post("http://music.163.com/api/search/pc", {
+            self:SetDisabled(true)
+            if offset+100 > songCount then return end
+            HttpPost("http://music.163.com/api/search/pc", {
                 ["s"] = searchWord,
                 ["type"] = "1",
                 ["limit"] = "100",
@@ -1055,11 +1087,11 @@ if CLIENT then
                 offset = offset + 100
                 if offset+100 > songCount then CloudMusic.NextPage:SetDisabled(true) end
                 CloudMusic.Songlist:Resolve(json["result"]["songs"])
-            end, function()SetDMUISkin(Derma_Message("换页失败", "错误", "好的")) end)
+            end, function()SetDMUISkin(Derma_Message("换页失败", "错误", "好的")) end,nil,function()
+                self:SetDisabled(false)
+            end)
         end
-        function CloudMusic.NextPage:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.NextPage.Paint = ButtonPaint
         CloudMusic.Songlist = vgui.Create("DListView",CloudMusic.Body)
         CloudMusic.Songlist:AddColumn("歌曲名")
         CloudMusic.Songlist:AddColumn("歌手")
@@ -1451,6 +1483,9 @@ if CLIENT then
             draw.DrawText("音量", "CloudMusicText", self:GetWide()-133, self:GetTall()-14, Color(0,0,0))
             draw.RoundedBox(2.5, self:GetWide()-100, self:GetTall()-9.5, 100, 5, Color(226,226,226))
             draw.RoundedBox(2.5, self:GetWide()-100, self:GetTall()-9.5, CloudMusic.Volume*100, 5, GetSettings("CloudMusicBarColor"))
+            if buffering then
+                draw.DrawText("正在尝试播放...", "CloudMusicText", CloudMusic.Player:GetWide()-160, 3, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
+            end
         end
         function CloudMusic.Player:OnMousePressed(key)
             if key == MOUSE_LEFT then
@@ -1516,21 +1551,19 @@ if CLIENT then
         end
         CloudMusic.Player.Prev = vgui.Create("DButton",CloudMusic.Player)
         CloudMusic.Player.Prev:SetPos(winh-44-(winh-149)-35,48)
-        CloudMusic.Player.Prev:SetSize(45,20)
+        CloudMusic.Player.Prev:SetSize(45,18)
         CloudMusic.Player.Prev:SetColor(Color(255,255,255))
         CloudMusic.Player.Prev:SetText("上一首")
         CloudMusic.Player.Prev.DoClick = function()
             CloudMusic:Prev()
         end
-        function CloudMusic.Player.Prev:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.Player.Prev.Paint = ButtonPaint
         function CloudMusic.Player.Prev:Think()
             self:SetDisabled(not IsValid(CloudMusic.CurrentChannel))
         end
         CloudMusic.Player.PlayPause = vgui.Create("DButton",CloudMusic.Player)
         CloudMusic.Player.PlayPause:SetPos(winh-44-(winh-149)+13,48)
-        CloudMusic.Player.PlayPause:SetSize(30,20)
+        CloudMusic.Player.PlayPause:SetSize(30,18)
         CloudMusic.Player.PlayPause:SetColor(Color(255,255,255))
         CloudMusic.Player.PlayPause.DoClick = function()
             if CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_PLAYING or CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_STALLED then
@@ -1539,9 +1572,7 @@ if CLIENT then
                 CloudMusic.CurrentChannel:Play()
             end
         end
-        function CloudMusic.Player.PlayPause:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.Player.PlayPause.Paint = ButtonPaint
         function CloudMusic.Player.PlayPause:Think()
             if IsValid(CloudMusic.CurrentChannel) then
                 self:SetDisabled(false)
@@ -1553,21 +1584,19 @@ if CLIENT then
         end
         CloudMusic.Player.Next = vgui.Create("DButton",CloudMusic.Player)
         CloudMusic.Player.Next:SetPos(winh-44-(winh-149)+46,48)
-        CloudMusic.Player.Next:SetSize(45,20)
+        CloudMusic.Player.Next:SetSize(45,18)
         CloudMusic.Player.Next:SetColor(Color(255,255,255))
         CloudMusic.Player.Next:SetText("下一首")
         CloudMusic.Player.Next.DoClick = function()
             CloudMusic:Next()
         end
-        function CloudMusic.Player.Next:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.Player.Next.Paint = ButtonPaint
         function CloudMusic.Player.Next:Think()
             self:SetDisabled(not IsValid(CloudMusic.CurrentChannel))
         end
         CloudMusic.Player.Mode = vgui.Create("DButton",CloudMusic.Player)
         CloudMusic.Player.Mode:SetPos(winh-44-(winh-149)+94,48)
-        CloudMusic.Player.Mode:SetSize(60,20)
+        CloudMusic.Player.Mode:SetSize(60,18)
         CloudMusic.Player.Mode:SetColor(Color(255,255,255))
         function CloudMusic.Player.Mode:DoClick()
             if currentMode == "ListLoop" then
@@ -1581,9 +1610,7 @@ if CLIENT then
             end
             SetSettings("CloudMusicPlayMode",currentMode)
         end
-        function CloudMusic.Player.Mode:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.Player.Mode.Paint = ButtonPaint
         function CloudMusic.Player.Mode:Think()
             if currentMode == "ListLoop" then
                 self:SetText("列表循环")
@@ -1604,9 +1631,7 @@ if CLIENT then
             SetClipboardText("https://music.163.com/song/media/outer/url?id="..CloudMusic.CurrentPlaying.ID..".mp3")
             SetDMUISkin(Derma_Message("已复制到剪贴板", "复制成功", "好的"))
         end
-        function CloudMusic.Player.CopyLink:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.Player.CopyLink.Paint = ButtonPaint
         CloudMusic.Player.VolumeEnchance = vgui.Create("DButton",CloudMusic.Player)
         CloudMusic.Player.VolumeEnchance:SetPos(CloudMusic.Player:GetWide()-155,0)
         CloudMusic.Player.VolumeEnchance:SetSize(90,20)
@@ -1632,9 +1657,7 @@ if CLIENT then
                 self:SetVisible(false)
             end
         end
-        function CloudMusic.Player.VolumeEnchance:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.Player.VolumeEnchance.Paint = ButtonPaint
         CloudMusic.HUD = vgui.Create("DHTML")
         CloudMusic.HUD:ParentToHUD()
         CloudMusic.HUD:SetHTML([[
@@ -1938,7 +1961,7 @@ if CLIENT then
             draw.DrawText("玩家列表", "CloudMusicSmallTitle", 170, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("自定义HUD CSS", "CloudMusicSmallTitle", 475, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("本播放器由Texas制作，歌词功能使用了Cloudflare Worker进行简化处理", "CloudMusicText", w/2, h-50, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_CENTER)
-            draw.DrawText("版本 1.5.0 Beta 20200117", "CloudMusicText", 5, winh-49, GetSettings("CloudMusicTextColor"))
+            draw.DrawText("版本 1.5.0 Beta 20200117.01", "CloudMusicText", 5, winh-49, GetSettings("CloudMusicTextColor"))
         end
         function CloudMusic.Settings:Think()
             if currentShowingPage == "Main" and (self:GetPos()) < winw then
@@ -1962,9 +1985,7 @@ if CLIENT then
         CloudMusic.Settings.Back:SetText("返回")
         CloudMusic.Settings.Back:SetColor(Color(255,255,255))
         CloudMusic.Settings.Back.DoClick = function()currentShowingPage = "Main"end
-        function CloudMusic.Settings.Back:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.Settings.Back.Paint = ButtonPaint
         CloudMusic.Settings.FFT = vgui.Create("DCheckBox",CloudMusic.Settings)
         CloudMusic.Settings.FFT:SetPos(5,30)
         CloudMusic.Settings.FFT:SetChecked(GetSettings("CloudMusicFFT"))
@@ -2096,9 +2117,7 @@ if CLIENT then
                 self:SetText("右下角")
             end
         end
-        function CloudMusic.Settings.HudPos:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.Settings.HudPos.Paint = ButtonPaint
         CloudMusic.Settings.LyricSize = vgui.Create("DNumSlider", CloudMusic.Settings)
         CloudMusic.Settings.LyricSize:SetPos(330,90)
         CloudMusic.Settings.LyricSize:SetText("歌词大小")
@@ -2260,9 +2279,7 @@ if CLIENT then
                 end
             end,"算了"))
         end
-        function CloudMusic.Settings.Colors.Reset:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.Settings.Colors.Reset.Paint = ButtonPaint
         CloudMusic.Settings.Colors:AddColorOption("文字颜色","CloudMusicTextColor",function(col)
             for _,v in pairs(CloudMusic.Settings.Colors:GetCanvas():GetChildren()) do
                 if v:GetName() == "DLabel" then v:SetTextColor(col) end
@@ -2316,9 +2333,7 @@ if CLIENT then
         CloudMusic.Settings.Texas.DoClick = function()
             gui.OpenURL("http://steamcommunity.com/profiles/76561198163912747")
         end
-        function CloudMusic.Settings.Texas:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.Settings.Texas.Paint = ButtonPaint
         CloudMusic.Settings.Donate = vgui.Create("DButton",CloudMusic.Settings)
         CloudMusic.Settings.Donate:SetPos(winw/2+2.5,winh-66)
         CloudMusic.Settings.Donate:SetSize(65,20)
@@ -2327,9 +2342,7 @@ if CLIENT then
         CloudMusic.Settings.Donate.DoClick = function()
             gui.OpenURL("http://texas.penguin-logistics.cn/donate")
         end
-        function CloudMusic.Settings.Donate:Paint(w,h)
-            draw.RoundedBox(10, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
-        end
+        CloudMusic.Settings.Donate.Paint = ButtonPaint
         --[[CloudMusic.Settings.Exusiai = vgui.Create("DHTML",CloudMusic.Settings)
         CloudMusic.Settings.Exusiai:SetPos(0,0)
         CloudMusic.Settings.Exusiai:SetSize(winw,winh-30)
@@ -2347,6 +2360,26 @@ if CLIENT then
         CloudMusic.Settings.LuoTianyi:SetPos(0,0)
         CloudMusic.Settings.LuoTianyi:SetSize(winw,winh-30)
         CloudMusic.Settings.LuoTianyi:SetZPos(-1)
+        function CloudMusic.Settings.LuoTianyi:OnDocumentReady()
+            self:AddFunction("waifu","setWaifuPos",function(x,y,w,h)
+                self.WaifuPos = {
+                    ["x"] = x,
+                    ["y"] = y,
+                    ["w"] = w,
+                    ["h"] = h
+                }
+            end)
+            self:RunJavascript("reqWaifuPos();")
+        end
+        function CloudMusic.Settings.LuoTianyi:Think()
+            local x,y = BodyMousePos()
+            if self.WaifuPos == nil then return end
+            if x >= self.WaifuPos["x"] and y >= self.WaifuPos["y"] and x <= self.WaifuPos["x"] + self.WaifuPos["w"] and y <= self.WaifuPos["y"] + self.WaifuPos["h"] then
+                self:RunJavascript("showWaifu();")
+            else
+                self:RunJavascript("hideWaifu();")
+            end
+        end
         --Only support chromium, so using a fallback
         CloudMusic.Settings.LuoTianyi:SetHTML([[
             <body style="user-select:none;pointer-events:none;">
@@ -2359,15 +2392,19 @@ if CLIENT then
                         width:fit-content;
                     }
                     .waifu > span {
-                        opacity:0.5;
                         font-family:微软雅黑;
                         font-size:12px;
                         color:#66CCFF;
                         position:absolute;
-                        left:0;
-                        right:0;
+                        left:50%;
                         bottom:100%;
                         text-align:center;
+                        max-width:0;
+                        transform:translate(-50%);
+                        word-break:keep-all;
+                        white-space:nowrap;
+                        -webkit-transition:all 1s ease-in-out;
+                        overflow:hidden;
                     }
                     .waifu > img {
                         max-height:100%;
@@ -2382,6 +2419,20 @@ if CLIENT then
                     window.onkeydown = function() {return false;}
                     document.getElementById("lty").onerror = function(e) {
                         this.src = "http://penguin-logistics.cn/images/exusiai.png";
+                    }
+                    function reqWaifuPos() {
+                        var el = document.getElementsByClassName("waifu")[0];
+                        waifu.setWaifuPos(el.offsetLeft,el.offsetTop,el.clientWidth,el.clientHeight);
+                    }
+                    function showWaifu() {
+                        var waifu = document.getElementsByClassName("waifu")[0];
+                        var waifuText = waifu.querySelector("span");
+                        waifuText.style.maxWidth = waifu.clientWidth + "px";
+                    }
+                    function hideWaifu() {
+                        var waifu = document.getElementsByClassName("waifu")[0];
+                        var waifuText = waifu.querySelector("span");
+                        waifuText.style.maxWidth = "";
                     }
                 </script>
             </body>
