@@ -4,7 +4,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200118.03"
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200118.04"
 if CLIENT then
     local CLOUDMUSIC_SETTING_FILE_VER = "1.2.0"
     CreateClientConVar("cloudmusic_verbose", "0", true, false, "启用网易云播放器啰嗦模式")
@@ -407,7 +407,7 @@ if CLIENT then
                 ply.ChannelCreating = true
                 GetSongURL(id,function(url)
                     sound.PlayURL(url,"noblock 3d",function(station)
-                        if IsValid(station) then
+                        if IsValid(station) and IsValid(ply) then
                             table.insert(channelPlayers, ply)
                             ply.MusicChannel = station
                             ply.MusicChannelID = id
@@ -2647,6 +2647,8 @@ if CLIENT then
                     else
                         table.remove(channelPlayers, i)
                     end
+                elseif p ~= nil and not IsValid(p) then
+                    table.remove(channelPlayers, i)
                 end
             end
             CloudMusic.HUD:CMUpdate()
@@ -2779,6 +2781,7 @@ if SERVER then
         local id = net.ReadString()
         local time = net.ReadFloat()
         if ULib ~= nil and not ULib.ucl.query(p,"cloudmusic3d") and valid then return end
+        if volume > 1 then volume = 1 end
         net.Start("CloudMusic3DSync")
         net.WriteEntity(p)
         net.WriteBool(valid)
