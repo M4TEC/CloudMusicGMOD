@@ -1,4 +1,5 @@
 if CLIENT then
+    local CLOUDMUSIC_VER = "1.5.0 Beta 20200118"
     local CLOUDMUSIC_SETTING_FILE_VER = "1.2.0"
     if file.Exists("materials/gwenskin/windows10.png", "GAME") then
         --Windows 10 UI Skin by Spar
@@ -40,6 +41,7 @@ if CLIENT then
         end
         local settings = {
             ["CloudMusicPlayMode"] = "ListLoop",
+            ["CloudMusicUseServer"] = false,
             ["CloudMusicAnimation"] = true,
             ["CloudMusic3D"] = false,
             ["CloudMusicLyric"] = true,
@@ -48,6 +50,7 @@ if CLIENT then
             ["CloudMusicHUDFFT"] = false,
             ["CloudMusicVolume"] = 1,
             ["CloudMusicVolumeEnchance"] = false,
+            ["CloudMusicHUDTextShadow"] = true,
             ["CloudMusicLyricCentered"] = false,
             ["CloudMusicLyricSize"] = 18,
             ["CloudMusicHUDTextColor"] = Color(255,255,255),
@@ -198,6 +201,7 @@ if CLIENT then
         local currentHudPos = GetSettings("CloudMusicHudPos")
         local buffering = false
         local userDetail = {}
+        local channelPlayers = {}
         local function TextMessage(str)
             msg = str
             timer.Simple(10, function()msg = "" end)
@@ -252,6 +256,7 @@ if CLIENT then
                 transLrcStartPos = 1
                 CloudMusic.CurrentChannel:Play()
             end
+            hook.Run("CloudMusicSongEnded")
         end
         local function SongPlayError()
             notification.AddLegacy("无法播放 "..CloudMusic.CurrentPlaying.Name, NOTIFY_ERROR, 3)
@@ -342,31 +347,40 @@ if CLIENT then
             end
         end
         local function GetSongURL(id,callback,finally)
-            TokenRequest("https://api.texl.top/node/song/url?id="..id.."&t="..os.time(),function(body)
-                local result = util.JSONToTable(body)
-                if result == nil then
+            if GetSettings("CloudMusicUseServer") then
+                TokenRequest("https://api.texl.top/node/song/url?id="..id.."&t="..os.time(),function(body)
+                    local result = util.JSONToTable(body)
+                    if result == nil then
+                        if type(callback) == "function" then
+                            callback("https://music.163.com/song/media/outer/url?id="..id..".mp3")
+                        end
+                        if type(finally) == "function" then
+                            finally()
+                        end
+                        return
+                    end
+                    if type(callback) == "function" then
+                        callback(result["data"][1]["url"])
+                    end
+                    if type(finally) == "function" then
+                        finally()
+                    end
+                end,function()
                     if type(callback) == "function" then
                         callback("https://music.163.com/song/media/outer/url?id="..id..".mp3")
                     end
                     if type(finally) == "function" then
                         finally()
                     end
-                    return
-                end
-                if type(callback) == "function" then
-                    callback(result["data"][1]["url"])
-                end
-                if type(finally) == "function" then
-                    finally()
-                end
-            end,function()
+                end)
+            else
                 if type(callback) == "function" then
                     callback("https://music.163.com/song/media/outer/url?id="..id..".mp3")
                 end
                 if type(finally) == "function" then
                     finally()
                 end
-            end)
+            end
         end
         local function Create3DChannel(id,ply)
             if IsValid(ply) and not ply.ChannelCreating then
@@ -374,6 +388,7 @@ if CLIENT then
                 GetSongURL(id,function(url)
                     sound.PlayURL(url,"noblock 3d",function(station)
                         if IsValid(station) then
+                            table.insert(channelPlayers, ply)
                             ply.MusicChannel = station
                             ply.MusicChannelID = id
                             net.Start("CloudMusicReqSync")
@@ -509,6 +524,7 @@ if CLIENT then
                             </body>
                         </html>
                     ]])
+                    hook.Run("CloudMusicUserInfo",userDetail)
                 end,function()
                     notification.AddLegacy("获取网易云用户信息失败", NOTIFY_ERROR, 3)
                     CloudMusic.Login:SetVisible(true)
@@ -552,33 +568,40 @@ if CLIENT then
             y = y - wy - 30
             return x,y
         end
-        function ToggleCloudMusic()
-            if CloudMusic:IsVisible() then
-                targetOpacity = 0
-                if not GetSettings("CloudMusicAnimation") then
-                    CloudMusic:SetAlpha(0)
-                    CloudMusic:SetVisible(false)
-                end
-            else
-                CloudMusic.Settings.BlacklistUser:Sync()
-                CloudMusic.Playlist:Sync()
-                CloudMusic:MakePopup()
-                CloudMusic:SetVisible(true)
-                targetOpacity = 255
-                if GetSettings("CloudMusicAnimation") then
-                    CloudMusic:SetAlpha(1)
-                else
-                    CloudMusic:SetAlpha(255)
-                end
-            end
-        end
         CloudMusic = vgui.Create("DFrame")
         CloudMusic:ShowCloseButton(false)
         CloudMusic:SetTitle("")
+        function CloudMusic:Toggle()
+            if self:IsVisible() then
+                targetOpacity = 0
+                if not GetSettings("CloudMusicAnimation") then
+                    self:SetAlpha(0)
+                    self:SetVisible(false)
+                end
+            else
+                self.Settings.BlacklistUser:Sync()
+                self.Playlist:Sync()
+                self:MakePopup()
+                self:SetVisible(true)
+                targetOpacity = 255
+                if GetSettings("CloudMusicAnimation") then
+                    self:SetAlpha(1)
+                else
+                    self:SetAlpha(255)
+                end
+            end
+        end
+        function CloudMusic:GetVersion()
+            return CLOUDMUSIC_VER
+        end
         function CloudMusic:Paint(w,h)
             draw.RoundedBoxEx(8, 0, 30, winw, winh-30, GetSettings("CloudMusicBackgroundColor"), false, false, true, true)
             draw.RoundedBoxEx(8, 0, 0, winw, 30, GetSettings("CloudMusicTitleBarColor"), true, true)
             draw.DrawText("网易云音乐", "CloudMusicTitle", 5, 3, GetSettings("CloudMusicTitleBarTextColor"))
+            if GetConVar("cloudmusic_ui_debug") ~= nil and GetConVar("cloudmusic_ui_debug"):GetInt() == 1 then
+                local x,y = BodyMousePos()
+                draw.DrawText(x..","..y, "DermaDefault", winw/2, 0, Color(0,0,0,255), TEXT_ALIGN_CENTER)
+            end
             if msg ~= "" then draw.DrawText(msg, "CloudMusicText", 110, 13, GetSettings("CloudMusicTitleBarTextColor")) end
         end
         local dragStartX = 0
@@ -621,7 +644,7 @@ if CLIENT then
         end
         function CloudMusic:OnKeyCodePressed(key)
             if key == KEY_F9 then
-                ToggleCloudMusic()
+                self:Toggle()
             end
         end
         function CloudMusic:OnMousePressed(key)
@@ -653,7 +676,7 @@ if CLIENT then
         CloudMusic.Close:SetColor(Color(255,255,255))
         CloudMusic.Close:SetText("X")
         CloudMusic.Close:SetDrawBackground(false)
-        CloudMusic.Close.DoClick = ToggleCloudMusic
+        function CloudMusic.Close:DoClick()CloudMusic:Toggle()end
         function CloudMusic.Close:Paint(w,h)
             if self:IsHovered() then
                 draw.RoundedBox(12, 0, 0, w, h, Color(255,0,0))
@@ -735,7 +758,7 @@ if CLIENT then
                 CloudMusic.LoginPrompt.PhoneAreaNum:SetDisabled(true)
                 CloudMusic.LoginPrompt.Username:SetDisabled(true)
                 CloudMusic.LoginPrompt.Password:SetDisabled(true)
-                CloudMusic.LoginPrompt.Login:SetDisabled(true)
+                self:SetDisabled(true)
                 if CloudMusic.LoginPrompt.Mode == "Email" then
                     TokenRequest("https://api.texl.top/node/login?email="..CloudMusic.LoginPrompt.Username:GetValue():JavascriptSafe().."&password="..CloudMusic.LoginPrompt.Password:GetValue():JavascriptSafe().."&u="..LocalPlayer():SteamID64(),function(body)
                         local result = util.JSONToTable(body)
@@ -754,7 +777,7 @@ if CLIENT then
                         CloudMusic.LoginPrompt.PhoneAreaNum:SetDisabled(false)
                         CloudMusic.LoginPrompt.Username:SetDisabled(false)
                         CloudMusic.LoginPrompt.Password:SetDisabled(false)
-                        CloudMusic.LoginPrompt.Login:SetDisabled(false)
+                        self:SetDisabled(false)
                     end)
                 else
                     TokenRequest("https://api.texl.top/node/login/cellphone?phone="..CloudMusic.LoginPrompt.Username:GetValue():JavascriptSafe().."&password="..CloudMusic.LoginPrompt.Password:GetValue():JavascriptSafe().."&countrycode="..CloudMusic.LoginPrompt.PhoneAreaNum:GetValue().."&u="..LocalPlayer():SteamID64(),function(body)
@@ -778,7 +801,7 @@ if CLIENT then
                         CloudMusic.LoginPrompt.PhoneAreaNum:SetDisabled(false)
                         CloudMusic.LoginPrompt.Username:SetDisabled(false)
                         CloudMusic.LoginPrompt.Password:SetDisabled(false)
-                        CloudMusic.LoginPrompt.Login:SetDisabled(false)
+                        self:SetDisabled(false)
                     end)
                 end
             end
@@ -848,6 +871,7 @@ if CLIENT then
             CloudMusic.UInfo.Signin:SetSize(winw/2-10,20)
             CloudMusic.UInfo.Signin:SetText("签到")
             function CloudMusic.UInfo.Signin:DoClick()
+                self:SetDisabled(true)
                 TokenRequest("https://api.texl.top/node/daily_signin?t="..os.time(),function(body)
                     local json = util.JSONToTable(body)
                     if json["code"] == 200 then
@@ -857,6 +881,8 @@ if CLIENT then
                     end
                 end,function()
                     SetDMUISkin(Derma_Message("签到失败", "签到", "好的"))
+                end,function()
+                    self:SetDisabled(false)
                 end)
             end
             CloudMusic.UInfo.Close = vgui.Create("DButton",CloudMusic.UInfo)
@@ -1391,6 +1417,7 @@ if CLIENT then
                                 setSongname("]]..self.CurrentPlaying.Name:JavascriptSafe()..[[");
                                 setArtist("]]..self.CurrentPlaying.Artist:JavascriptSafe()..[[");
                             ]])
+                            hook.Run("CloudMusicMusicPlaying",self.CurrentPlaying)
                         end
                     else
                         SongPlayError()
@@ -1485,6 +1512,8 @@ if CLIENT then
             draw.RoundedBox(2.5, self:GetWide()-100, self:GetTall()-9.5, CloudMusic.Volume*100, 5, GetSettings("CloudMusicBarColor"))
             if buffering then
                 draw.DrawText("正在尝试播放...", "CloudMusicText", CloudMusic.Player:GetWide()-160, 3, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
+            elseif IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_STALLED then
+                draw.DrawText("正在缓冲...", "CloudMusicText", CloudMusic.Player:GetWide()-160, 3, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
             end
         end
         function CloudMusic.Player:OnMousePressed(key)
@@ -1689,6 +1718,7 @@ if CLIENT then
                             body > .lyric { position:fixed; bottom:0; width:100%; text-align:center; visibility:hidden; }
                             body.center-lyric > .lyric { visibility:visible; }
                             body.center-lyric .hud .lyric { visibility:hidden; }
+                            body.text-shadow { text-shadow: 1px 1px 2px #666; }
                         </style>
                         <style id="spec-lrc"></style>
                         <style id="custom"></style>
@@ -1817,6 +1847,13 @@ if CLIENT then
                         function setLyricSize(size) {
                             document.getElementById("spec-lrc").innerHTML = "body > .lyric > span:first-of-type { font-size:"+size+"px; } body > .lyric > span:last-of-type { font-size:"+(size-6)+"px; }";
                         }
+                        function setTextShadow(shadow) {
+                            if (shadow) {
+                                document.body.classList.add("text-shadow");
+                            } else {
+                                document.body.classList.remove("text-shadow");
+                            }
+                        }
                         function show() {
                             setPercent(0);
                             document.body.classList.remove("hide");
@@ -1858,6 +1895,7 @@ if CLIENT then
                 setCustomCSS("]]..GetSettings("CloudMusicHUDCustomCSS")..[[");
                 setLyricCentered(]]..(GetSettings("CloudMusicLyricCentered") and "true" or "false")..[[);
                 setLyricSize(]]..GetSettings("CloudMusicLyricSize")..[[);
+                setTextShadow(]]..(GetSettings("CloudMusicHUDTextShadow") and "true" or "false")..[[);
             ]])
             hook.Run("CloudMusicHUDReady")
         end
@@ -1956,12 +1994,14 @@ if CLIENT then
             draw.DrawText("打开3D外放", "CloudMusicText", 140, 30, GetSettings("CloudMusicTextColor"))
             draw.DrawText("屏蔽他人3D外放", "CloudMusicText", 140, 70, GetSettings("CloudMusicTextColor"))
             draw.DrawText("歌词置于游戏界面底部中央", "CloudMusicText", 140, 90, GetSettings("CloudMusicTextColor"))
-            draw.DrawText("HUD位置", "CloudMusicText", 345, 32, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
+            draw.DrawText("HUD位置", "CloudMusicText", 300, 32, GetSettings("CloudMusicTextColor"))
+            draw.DrawText("使用服务器获取链接（VIP歌曲相关）", "CloudMusicText", 320, 50, GetSettings("CloudMusicTextColor"))
+            draw.DrawText("HUD文字阴影", "CloudMusicText", 320, 70, GetSettings("CloudMusicTextColor"))
             draw.DrawText("界面颜色", "CloudMusicSmallTitle", 5, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("玩家列表", "CloudMusicSmallTitle", 170, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("自定义HUD CSS", "CloudMusicSmallTitle", 475, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText("本播放器由Texas制作，歌词功能使用了Cloudflare Worker进行简化处理", "CloudMusicText", w/2, h-50, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_CENTER)
-            draw.DrawText("版本 1.5.0 Beta 20200117.01", "CloudMusicText", 5, winh-49, GetSettings("CloudMusicTextColor"))
+            draw.DrawText("版本 "..CLOUDMUSIC_VER.."\n建议游戏分辨率设为1366x768或以上", "CloudMusicText", 5, winh-63, GetSettings("CloudMusicTextColor"))
         end
         function CloudMusic.Settings:Think()
             if currentShowingPage == "Main" and (self:GetPos()) < winw then
@@ -2118,8 +2158,22 @@ if CLIENT then
             end
         end
         CloudMusic.Settings.HudPos.Paint = ButtonPaint
+        CloudMusic.Settings.UseServer = vgui.Create("DCheckBox", CloudMusic.Settings)
+        CloudMusic.Settings.UseServer:SetPos(300,50)
+        CloudMusic.Settings.UseServer:SetChecked(GetSettings("CloudMusicUseServer"))
+        CloudMusic.Settings.UseServer:SetTooltip("听VIP歌曲需勾选并登录网易云VIP账号而且没有网易云VIP的玩家无法听见VIP歌曲外放")
+        function CloudMusic.Settings.UseServer:OnChange(val)
+            SetSettings("CloudMusicUseServer",val)
+        end
+        CloudMusic.Settings.HUDTextShadow = vgui.Create("DCheckBox", CloudMusic.Settings)
+        CloudMusic.Settings.HUDTextShadow:SetPos(300,70)
+        CloudMusic.Settings.HUDTextShadow:SetChecked(GetSettings("CloudMusicHUDTextShadow"))
+        function CloudMusic.Settings.HUDTextShadow:OnChange(val)
+            SetSettings("CloudMusicHUDTextShadow",val)
+            CloudMusic.HUD:RunJavascript([[setTextShadow(]]..(val and "true" or "false")..[[);]])
+        end
         CloudMusic.Settings.LyricSize = vgui.Create("DNumSlider", CloudMusic.Settings)
-        CloudMusic.Settings.LyricSize:SetPos(330,90)
+        CloudMusic.Settings.LyricSize:SetPos(300,89)
         CloudMusic.Settings.LyricSize:SetText("歌词大小")
         CloudMusic.Settings.LyricSize:SetSize(150,20)
         CloudMusic.Settings.LyricSize:SetMin(18)
@@ -2237,12 +2291,12 @@ if CLIENT then
         CloudMusic.Settings.Colors:SetPos(5,130)
         CloudMusic.Settings.Colors:SetSize(160,250)
         function CloudMusic.Settings.Colors:AddColorOption(name,bindName,callback)
-            local title = CloudMusic.Settings.Colors:Add("DLabel")
+            local title = self:Add("DLabel")
             title:SetTextColor(GetSettings("CloudMusicTextColor"))
             title:SetFont("CloudMusicText")
             title:SetText(name)
             title:Dock(TOP)
-            local mixer = CloudMusic.Settings.Colors:Add("DColorMixer")
+            local mixer = self:Add("DColorMixer")
             mixer:SetSize(150,200)
             mixer:SetAlphaBar(false)
             mixer:SetColor(GetSettings(bindName))
@@ -2379,6 +2433,16 @@ if CLIENT then
             else
                 self:RunJavascript("hideWaifu();")
             end
+            if input.IsMouseDown(MOUSE_LEFT) and not self.MousePressed and x >= self.WaifuPos["x"] and y >= self.WaifuPos["y"] and x <= self.WaifuPos["x"] + self.WaifuPos["w"] and y <= self.WaifuPos["y"] + self.WaifuPos["h"] then
+                self.MousePressed = true
+                sound.PlayURL("http://files.m4tec.org/index.php/s/apjmfZ7AasncR8A/download", "", function(station)
+                    if IsValid(station) then
+                        station:Play()
+                    end
+                end)
+            elseif not input.IsMouseDown(MOUSE_LEFT) then
+                self.MousePressed = false
+            end
         end
         --Only support chromium, so using a fallback
         CloudMusic.Settings.LuoTianyi:SetHTML([[
@@ -2411,7 +2475,7 @@ if CLIENT then
                     }
                 </style>
                 <div class="waifu">
-                    <span>作者的老婆</span>
+                    <span>作者的<strong>闺蜜</strong></span>
                     <img src="https://files.m4tec.org/index.php/s/8zJ3zwCLsW2MTia/preview" id="lty"/>
                 </div>
                 <script>
@@ -2465,18 +2529,21 @@ if CLIENT then
             end
         end)
         hook.Add("Think","CloudMusic_Think",function()
-            if IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetTime() == CloudMusic.CurrentChannel:GetLength() then
+            if IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetTime() >= CloudMusic.CurrentChannel:GetLength()-1 and CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_STOPPED then
                 SongEnded()
             end
-            local players = player.GetAll()
-            for i=1,#players do
-                local p = players[i]
-                if p ~= LocalPlayer() and IsValid(p.MusicChannel) then
-                    p.MusicChannel:SetPos(p:GetPos())
+            for i=1,#channelPlayers do
+                local p = channelPlayers[i]
+                if p ~= LocalPlayer() then
+                    if IsValid(p.MusicChannel) and p.MusicChannel:GetState() ~= GMOD_CHANNEL_STOPPED then
+                        p.MusicChannel:SetPos(p:GetPos())
+                    else
+                        table.remove(channelPlayers, i)
+                    end
                 end
             end
         end)
-        net.Receive("ToggleCloudMusic", ToggleCloudMusic)
+        net.Receive("ToggleCloudMusic", function()CloudMusic:Toggle()end)
         net.Receive("CloudMusicKeyDown",function()
             if not IsValid(CloudMusic.CurrentChannel) or not CloudMusic.CurrentPlaying then return end
             if input.IsKeyDown(KEY_LALT) then
@@ -2533,15 +2600,17 @@ if CLIENT then
             end
         end)
         net.Receive("CloudMusicReqSync", SendSyncData)
+        hook.Run("CloudMusicInit")
         CloudMusicInitOnce = true
     end
     hook.Add("InitPostEntity", "CloudMusic_Init", Init)
     concommand.Add("cloudmusic", function()
-        ToggleCloudMusic()
+        CloudMusic:Toggle()
     end, nil, "打开网易云播放器")
     concommand.Add("cloudmusic_reinit",function()
         Init()
     end, nil, "重新初始化网易云播放器")
+    CreateClientConVar("cloudmusic_ui_debug", "0", false, false, "启用网易云播放器界面调试模式")
     if CloudMusicInitOnce then
         Init()
     end
