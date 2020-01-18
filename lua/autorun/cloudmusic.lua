@@ -1,6 +1,13 @@
+local function Print(msg,color)
+    if GetConVar("cloudmusic_verbose") ~= nil and GetConVar("cloudmusic_verbose"):GetInt() ~= 1 then return end
+    local DEF_COLOR = CLIENT and Color( 255, 222, 102 ) or Color( 137, 222, 255 )
+    if color == nil then color = DEF_COLOR end
+    MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
+end
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200118.01"
 if CLIENT then
-    local CLOUDMUSIC_VER = "1.5.0 Beta 20200118"
     local CLOUDMUSIC_SETTING_FILE_VER = "1.2.0"
+    CreateClientConVar("cloudmusic_verbose", "0", true, false, "启用网易云播放器啰嗦模式")
     if file.Exists("materials/gwenskin/windows10.png", "GAME") then
         --Windows 10 UI Skin by Spar
         local surface=surface;local Color=Color;SKIN={}SKIN.PrintName="Windows 10"SKIN.Author="Spar"SKIN.DermaVersion=1;SKIN.GwenTexture=Material("gwenskin/windows10.png")SKIN.text_dark=Color(0,0,0,255)SKIN.colTextEntryText=Color(0,0,0,255)SKIN.colTextEntryTextHighlight=Color(0,120,215,255)SKIN.colTextEntryTextCursor=Color(0,0,0,255)SKIN.colTextEntryTextPlaceholder=Color(109,109,109,255)SKIN.tex={}SKIN.tex.Selection=GWEN.CreateTextureBorder(384,32,31,31,4,4,4,4)SKIN.tex.Panels={}SKIN.tex.Panels.Normal=GWEN.CreateTextureBorder(256,0,63,63,16,16,16,16)SKIN.tex.Panels.Bright=GWEN.CreateTextureBorder(256+64,0,63,63,16,16,16,16)SKIN.tex.Panels.Dark=GWEN.CreateTextureBorder(256,64,63,63,16,16,16,16)SKIN.tex.Panels.Highlight=GWEN.CreateTextureBorder(256+64,64,63,63,16,16,16,16)SKIN.tex.Button=GWEN.CreateTextureBorder(480,0,31,31,8,8,8,8)SKIN.tex.Button_Hovered=GWEN.CreateTextureBorder(480,32,31,31,8,8,8,8)SKIN.tex.Button_Dead=GWEN.CreateTextureBorder(480,64,31,31,8,8,8,8)SKIN.tex.Button_Down=GWEN.CreateTextureBorder(480,96,31,31,8,8,8,8)SKIN.tex.Shadow=GWEN.CreateTextureBorder(448,0,31,31,8,8,8,8)SKIN.tex.Tree=GWEN.CreateTextureBorder(256,128,127,127,16,16,16,16)SKIN.tex.Checkbox_Checked=GWEN.CreateTextureNormal(448,32,15,15)SKIN.tex.Checkbox=GWEN.CreateTextureNormal(464,32,15,15)SKIN.tex.CheckboxD_Checked=GWEN.CreateTextureNormal(448,48,15,15)SKIN.tex.CheckboxD=GWEN.CreateTextureNormal(464,48,15,15)SKIN.tex.RadioButton_Checked=GWEN.CreateTextureNormal(448,64,15,15)SKIN.tex.RadioButton=GWEN.CreateTextureNormal(464,64,15,15)SKIN.tex.RadioButtonD_Checked=GWEN.CreateTextureNormal(448,80,15,15)SKIN.tex.RadioButtonD=GWEN.CreateTextureNormal(464,80,15,15)SKIN.tex.TreePlus=GWEN.CreateTextureNormal(448,96,15,15)SKIN.tex.TreeMinus=GWEN.CreateTextureNormal(464,96,15,15)SKIN.tex.TextBox=GWEN.CreateTextureBorder(0,150,127,21,4,4,4,4)SKIN.tex.TextBox_Focus=GWEN.CreateTextureBorder(0,172,127,21,4,4,4,4)SKIN.tex.TextBox_Disabled=GWEN.CreateTextureBorder(0,194,127,21,4,4,4,4)SKIN.tex.MenuBG_Column=GWEN.CreateTextureBorder(128,128,127,63,24,8,8,8)SKIN.tex.MenuBG=GWEN.CreateTextureBorder(128,192,127,63,8,8,8,8)SKIN.tex.MenuBG_Hover=GWEN.CreateTextureBorder(128,256,127,31,8,8,8,8)SKIN.tex.MenuBG_Spacer=GWEN.CreateTextureNormal(128,288,127,3)SKIN.tex.Menu_Strip=GWEN.CreateTextureBorder(0,128,127,21,8,8,8,8)SKIN.tex.Menu_Check=GWEN.CreateTextureNormal(448,112,15,15)SKIN.tex.Tab_Control=GWEN.CreateTextureBorder(0,256,127,127,8,8,8,8)SKIN.tex.TabB_Active=GWEN.CreateTextureBorder(0,416,63,31,8,8,8,8)SKIN.tex.TabB_Inactive=GWEN.CreateTextureBorder(128,416,63,31,8,8,8,8)SKIN.tex.TabT_Active=GWEN.CreateTextureBorder(0,384,63,31,8,8,8,8)SKIN.tex.TabT_Inactive=GWEN.CreateTextureBorder(128,384,63,31,8,8,8,8)SKIN.tex.TabL_Active=GWEN.CreateTextureBorder(64,384,31,63,8,8,8,8)SKIN.tex.TabL_Inactive=GWEN.CreateTextureBorder(64+128,384,31,63,8,8,8,8)SKIN.tex.TabR_Active=GWEN.CreateTextureBorder(96,384,31,63,8,8,8,8)SKIN.tex.TabR_Inactive=GWEN.CreateTextureBorder(96+128,384,31,63,8,8,8,8)SKIN.tex.Tab_Bar=GWEN.CreateTextureBorder(128,352,127,31,4,4,4,4)SKIN.tex.Window={}SKIN.tex.Window.Normal=GWEN.CreateTextureBorder(0,0,127,127,8,24,8,8)SKIN.tex.Window.Inactive=GWEN.CreateTextureBorder(128,0,127,127,8,24,8,8)SKIN.tex.Window.Close=GWEN.CreateTextureNormal(32,448,31,24)SKIN.tex.Window.Close_Hover=GWEN.CreateTextureNormal(64,448,31,24)SKIN.tex.Window.Close_Down=GWEN.CreateTextureNormal(96,448,31,24)SKIN.tex.Window.Maxi=GWEN.CreateTextureNormal(32+96*2,448,31,24)SKIN.tex.Window.Maxi_Hover=GWEN.CreateTextureNormal(64+96*2,448,31,24)SKIN.tex.Window.Maxi_Down=GWEN.CreateTextureNormal(96+96*2,448,31,24)SKIN.tex.Window.Restore=GWEN.CreateTextureNormal(32+96*2,448+32,31,24)SKIN.tex.Window.Restore_Hover=GWEN.CreateTextureNormal(64+96*2,448+32,31,24)SKIN.tex.Window.Restore_Down=GWEN.CreateTextureNormal(96+96*2,448+32,31,24)SKIN.tex.Window.Mini=GWEN.CreateTextureNormal(32+96,448,31,24)SKIN.tex.Window.Mini_Hover=GWEN.CreateTextureNormal(64+96,448,31,24)SKIN.tex.Window.Mini_Down=GWEN.CreateTextureNormal(96+96,448,31,24)SKIN.tex.Scroller={}SKIN.tex.Scroller.TrackV=GWEN.CreateTextureBorder(384,208,15,127,4,4,4,4)SKIN.tex.Scroller.ButtonV_Normal=GWEN.CreateTextureBorder(384+16,208,15,127,4,4,4,4)SKIN.tex.Scroller.ButtonV_Hover=GWEN.CreateTextureBorder(384+32,208,15,127,4,4,4,4)SKIN.tex.Scroller.ButtonV_Down=GWEN.CreateTextureBorder(384+48,208,15,127,4,4,4,4)SKIN.tex.Scroller.ButtonV_Disabled=GWEN.CreateTextureBorder(384+64,208,15,127,4,4,4,4)SKIN.tex.Scroller.TrackH=GWEN.CreateTextureBorder(384,128,127,15,4,4,4,4)SKIN.tex.Scroller.ButtonH_Normal=GWEN.CreateTextureBorder(384,128+16,127,15,4,4,4,4)SKIN.tex.Scroller.ButtonH_Hover=GWEN.CreateTextureBorder(384,128+32,127,15,4,4,4,4)SKIN.tex.Scroller.ButtonH_Down=GWEN.CreateTextureBorder(384,128+48,127,15,4,4,4,4)SKIN.tex.Scroller.ButtonH_Disabled=GWEN.CreateTextureBorder(384,128+64,127,15,4,4,4,4)SKIN.tex.Scroller.LeftButton_Normal=GWEN.CreateTextureBorder(464,208,15,15,2,2,2,2)SKIN.tex.Scroller.LeftButton_Hover=GWEN.CreateTextureBorder(480,208,15,15,2,2,2,2)SKIN.tex.Scroller.LeftButton_Down=GWEN.CreateTextureBorder(464,272,15,15,2,2,2,2)SKIN.tex.Scroller.LeftButton_Disabled=GWEN.CreateTextureBorder(480+48,272,15,15,2,2,2,2)SKIN.tex.Scroller.UpButton_Normal=GWEN.CreateTextureBorder(464,208+16,15,15,2,2,2,2)SKIN.tex.Scroller.UpButton_Hover=GWEN.CreateTextureBorder(480,208+16,15,15,2,2,2,2)SKIN.tex.Scroller.UpButton_Down=GWEN.CreateTextureBorder(464,272+16,15,15,2,2,2,2)SKIN.tex.Scroller.UpButton_Disabled=GWEN.CreateTextureBorder(480+48,272+16,15,15,2,2,2,2)SKIN.tex.Scroller.RightButton_Normal=GWEN.CreateTextureBorder(464,208+32,15,15,2,2,2,2)SKIN.tex.Scroller.RightButton_Hover=GWEN.CreateTextureBorder(480,208+32,15,15,2,2,2,2)SKIN.tex.Scroller.RightButton_Down=GWEN.CreateTextureBorder(464,272+32,15,15,2,2,2,2)SKIN.tex.Scroller.RightButton_Disabled=GWEN.CreateTextureBorder(480+48,272+32,15,15,2,2,2,2)SKIN.tex.Scroller.DownButton_Normal=GWEN.CreateTextureBorder(464,208+48,15,15,2,2,2,2)SKIN.tex.Scroller.DownButton_Hover=GWEN.CreateTextureBorder(480,208+48,15,15,2,2,2,2)SKIN.tex.Scroller.DownButton_Down=GWEN.CreateTextureBorder(464,272+48,15,15,2,2,2,2)SKIN.tex.Scroller.DownButton_Disabled=GWEN.CreateTextureBorder(480+48,272+48,15,15,2,2,2,2)SKIN.tex.Menu={}SKIN.tex.Menu.RightArrow=GWEN.CreateTextureNormal(464,112,15,15)SKIN.tex.Input={}SKIN.tex.Input.ComboBox={}SKIN.tex.Input.ComboBox.Normal=GWEN.CreateTextureBorder(384,336,127,31,8,8,32,8)SKIN.tex.Input.ComboBox.Hover=GWEN.CreateTextureBorder(384,336+32,127,31,8,8,32,8)SKIN.tex.Input.ComboBox.Down=GWEN.CreateTextureBorder(384,336+64,127,31,8,8,32,8)SKIN.tex.Input.ComboBox.Disabled=GWEN.CreateTextureBorder(384,336+96,127,31,8,8,32,8)SKIN.tex.Input.ComboBox.Button={}SKIN.tex.Input.ComboBox.Button.Normal=GWEN.CreateTextureNormal(496,272,15,15)SKIN.tex.Input.ComboBox.Button.Hover=GWEN.CreateTextureNormal(496,272+16,15,15)SKIN.tex.Input.ComboBox.Button.Down=GWEN.CreateTextureNormal(496,272+32,15,15)SKIN.tex.Input.ComboBox.Button.Disabled=GWEN.CreateTextureNormal(496,272+48,15,15)SKIN.tex.Input.UpDown={}SKIN.tex.Input.UpDown.Up={}SKIN.tex.Input.UpDown.Up.Normal=GWEN.CreateTextureCentered(384,112,7,7)SKIN.tex.Input.UpDown.Up.Hover=GWEN.CreateTextureCentered(384+8,112,7,7)SKIN.tex.Input.UpDown.Up.Down=GWEN.CreateTextureCentered(384+16,112,7,7)SKIN.tex.Input.UpDown.Up.Disabled=GWEN.CreateTextureCentered(384+24,112,7,7)SKIN.tex.Input.UpDown.Down={}SKIN.tex.Input.UpDown.Down.Normal=GWEN.CreateTextureCentered(384,120,7,7)SKIN.tex.Input.UpDown.Down.Hover=GWEN.CreateTextureCentered(384+8,120,7,7)SKIN.tex.Input.UpDown.Down.Down=GWEN.CreateTextureCentered(384+16,120,7,7)SKIN.tex.Input.UpDown.Down.Disabled=GWEN.CreateTextureCentered(384+24,120,7,7)SKIN.tex.Input.Slider={}SKIN.tex.Input.Slider.H={}SKIN.tex.Input.Slider.H.Normal=GWEN.CreateTextureNormal(416,32,15,15)SKIN.tex.Input.Slider.H.Hover=GWEN.CreateTextureNormal(416,32+16,15,15)SKIN.tex.Input.Slider.H.Down=GWEN.CreateTextureNormal(416,32+32,15,15)SKIN.tex.Input.Slider.H.Disabled=GWEN.CreateTextureNormal(416,32+48,15,15)SKIN.tex.Input.Slider.V={}SKIN.tex.Input.Slider.V.Normal=GWEN.CreateTextureNormal(416+16,32,15,15)SKIN.tex.Input.Slider.V.Hover=GWEN.CreateTextureNormal(416+16,32+16,15,15)SKIN.tex.Input.Slider.V.Down=GWEN.CreateTextureNormal(416+16,32+32,15,15)SKIN.tex.Input.Slider.V.Disabled=GWEN.CreateTextureNormal(416+16,32+48,15,15)SKIN.tex.Input.ListBox={}SKIN.tex.Input.ListBox.Background=GWEN.CreateTextureBorder(256,256,63,127,8,8,8,8)SKIN.tex.Input.ListBox.Hovered=GWEN.CreateTextureBorder(320,320,31,31,8,8,8,8)SKIN.tex.Input.ListBox.EvenLine=GWEN.CreateTextureBorder(352,256,31,31,8,8,8,8)SKIN.tex.Input.ListBox.OddLine=GWEN.CreateTextureBorder(352,288,31,31,8,8,8,8)SKIN.tex.Input.ListBox.EvenLineSelected=GWEN.CreateTextureBorder(320,256,31,31,8,8,8,8)SKIN.tex.Input.ListBox.OddLineSelected=GWEN.CreateTextureBorder(320,288,31,31,8,8,8,8)SKIN.tex.ProgressBar={}SKIN.tex.ProgressBar.Back=GWEN.CreateTextureBorder(384,0,31,31,8,8,8,8)SKIN.tex.ProgressBar.Front=GWEN.CreateTextureBorder(384+32,0,31,31,8,8,8,8)SKIN.tex.CategoryList={}SKIN.tex.CategoryList.Outer=GWEN.CreateTextureBorder(256,384,63,63,8,8,8,8)SKIN.tex.CategoryList.Inner=GWEN.CreateTextureBorder(320,384,63,63,8,21,8,8)SKIN.tex.CategoryList.Header=GWEN.CreateTextureBorder(320,352,63,31,8,8,8,8)SKIN.tex.Tooltip=GWEN.CreateTextureBorder(384,64,31,31,8,8,8,8)SKIN.Colours={}SKIN.Colours.Window={}SKIN.Colours.Window.TitleActive=GWEN.TextureColor(4+8*0,508)SKIN.Colours.Window.TitleInactive=GWEN.TextureColor(4+8*1,508)SKIN.Colours.Button={}SKIN.Colours.Button.Normal=GWEN.TextureColor(4+8*2,508)SKIN.Colours.Button.Hover=GWEN.TextureColor(4+8*3,508)SKIN.Colours.Button.Down=GWEN.TextureColor(4+8*2,500)SKIN.Colours.Button.Disabled=GWEN.TextureColor(4+8*3,500)SKIN.Colours.Tab={}SKIN.Colours.Tab.Active={}SKIN.Colours.Tab.Active.Normal=GWEN.TextureColor(4+8*4,508)SKIN.Colours.Tab.Active.Hover=GWEN.TextureColor(4+8*5,508)SKIN.Colours.Tab.Active.Down=GWEN.TextureColor(4+8*4,500)SKIN.Colours.Tab.Active.Disabled=GWEN.TextureColor(4+8*5,500)SKIN.Colours.Tab.Inactive={}SKIN.Colours.Tab.Inactive.Normal=GWEN.TextureColor(4+8*6,508)SKIN.Colours.Tab.Inactive.Hover=GWEN.TextureColor(4+8*7,508)SKIN.Colours.Tab.Inactive.Down=GWEN.TextureColor(4+8*6,500)SKIN.Colours.Tab.Inactive.Disabled=GWEN.TextureColor(4+8*7,500)SKIN.Colours.Label={}SKIN.Colours.Label.Default=GWEN.TextureColor(4+8*8,508)SKIN.Colours.Label.Bright=GWEN.TextureColor(4+8*9,508)SKIN.Colours.Label.Dark=GWEN.TextureColor(4+8*8,500)SKIN.Colours.Label.Highlight=GWEN.TextureColor(4+8*9,500)SKIN.Colours.Tree={}SKIN.Colours.Tree.Lines=GWEN.TextureColor(4+8*10,508)SKIN.Colours.Tree.Normal=GWEN.TextureColor(4+8*11,508)SKIN.Colours.Tree.Hover=GWEN.TextureColor(4+8*10,500)SKIN.Colours.Tree.Selected=GWEN.TextureColor(4+8*11,500)SKIN.Colours.Properties={}SKIN.Colours.Properties.Line_Normal=GWEN.TextureColor(4+8*12,508)SKIN.Colours.Properties.Line_Selected=GWEN.TextureColor(4+8*13,508)SKIN.Colours.Properties.Line_Hover=GWEN.TextureColor(4+8*12,500)SKIN.Colours.Properties.Title=GWEN.TextureColor(4+8*13,500)SKIN.Colours.Properties.Column_Normal=GWEN.TextureColor(4+8*14,508)SKIN.Colours.Properties.Column_Selected=GWEN.TextureColor(4+8*15,508)SKIN.Colours.Properties.Column_Hover=GWEN.TextureColor(4+8*14,500)SKIN.Colours.Properties.Border=GWEN.TextureColor(4+8*15,500)SKIN.Colours.Properties.Label_Normal=GWEN.TextureColor(4+8*16,508)SKIN.Colours.Properties.Label_Selected=GWEN.TextureColor(4+8*17,508)SKIN.Colours.Properties.Label_Hover=GWEN.TextureColor(4+8*16,500)SKIN.Colours.Category={}SKIN.Colours.Category.Header=GWEN.TextureColor(4+8*18,500)SKIN.Colours.Category.Header_Closed=GWEN.TextureColor(4+8*19,500)SKIN.Colours.Category.Line={}SKIN.Colours.Category.Line.Text=GWEN.TextureColor(4+8*20,508)SKIN.Colours.Category.Line.Text_Hover=GWEN.TextureColor(4+8*21,508)SKIN.Colours.Category.Line.Text_Selected=GWEN.TextureColor(4+8*20,500)SKIN.Colours.Category.Line.Button=GWEN.TextureColor(4+8*21,500)SKIN.Colours.Category.Line.Button_Hover=GWEN.TextureColor(4+8*22,508)SKIN.Colours.Category.Line.Button_Selected=GWEN.TextureColor(4+8*23,508)SKIN.Colours.Category.LineAlt={}SKIN.Colours.Category.LineAlt.Text=GWEN.TextureColor(4+8*22,500)SKIN.Colours.Category.LineAlt.Text_Hover=GWEN.TextureColor(4+8*23,500)SKIN.Colours.Category.LineAlt.Text_Selected=GWEN.TextureColor(4+8*24,508)SKIN.Colours.Category.LineAlt.Button=GWEN.TextureColor(4+8*25,508)SKIN.Colours.Category.LineAlt.Button_Hover=GWEN.TextureColor(4+8*24,500)SKIN.Colours.Category.LineAlt.Button_Selected=GWEN.TextureColor(4+8*25,500)SKIN.Colours.TooltipText=GWEN.TextureColor(4+8*26,500)function SKIN:PaintPanel(a,b,c)if not a.m_bBackground then return end;self.tex.Panels.Normal(0,0,b,c,a.m_bgColor)end;function SKIN:PaintShadow(a,b,c)SKIN.tex.Shadow(0,0,b,c)end;function SKIN:PaintFrame(a,b,c)if a.m_bPaintShadow then DisableClipping(true)self.tex.Shadow(-4,-4,b+10,c+10)DisableClipping(false)end;if a:HasHierarchicalFocus()then self.tex.Window.Normal(0,0,b,c)else self.tex.Window.Inactive(0,0,b,c)end end;function SKIN:PaintButton(a,b,c)if not a.m_bBackground then return end;if a.Depressed or a:IsSelected()or a:GetToggle()then return self.tex.Button_Down(0,0,b,c)end;if a:GetDisabled()then return self.tex.Button_Dead(0,0,b,c)end;if a.Hovered then return self.tex.Button_Hovered(0,0,b,c)end;self.tex.Button(0,0,b,c)end;function SKIN:PaintTree(a,b,c)if not a.m_bBackground then return end;self.tex.Tree(0,0,b,c,a.m_bgColor)end;function SKIN:PaintCheckBox(a,b,c)if a:GetChecked()then if a:GetDisabled()then self.tex.CheckboxD_Checked(0,0,b,c)else self.tex.Checkbox_Checked(0,0,b,c)end else if a:GetDisabled()then self.tex.CheckboxD(0,0,b,c)else self.tex.Checkbox(0,0,b,c)end end end;function SKIN:PaintExpandButton(a,b,c)if not a:GetExpanded()then self.tex.TreePlus(0,0,b,c)else self.tex.TreeMinus(0,0,b,c)end end;function SKIN:PaintTextEntry(a,b,c)if a.m_bBackground then if a:GetDisabled()then self.tex.TextBox_Disabled(0,0,b,c)elseif a:HasFocus()then self.tex.TextBox_Focus(0,0,b,c)else self.tex.TextBox(0,0,b,c)end end;if a.GetPlaceholderText and a.GetPlaceholderColor and a:GetPlaceholderText()and a:GetPlaceholderText():Trim()~=""and a:GetPlaceholderColor()and(not a:GetText()or a:GetText()=="")then local d=a:GetText()local e=a:GetPlaceholderText()if e:StartWith("#")then e=e:sub(2)end;e=language.GetPhrase(e)a:SetText(e)a:DrawTextEntryText(a:GetPlaceholderColor(),a:GetHighlightColor(),a:GetCursorColor())a:SetText(d)return end;a:DrawTextEntryText(a:GetTextColor(),a:GetHighlightColor(),a:GetCursorColor())end;function SKIN:PaintMenu(a,b,c)if a:GetDrawColumn()then self.tex.MenuBG_Column(0,0,b,c)else self.tex.MenuBG(0,0,b,c)end end;function SKIN:PaintMenuSpacer(a,b,c)surface.SetDrawColor(Color(0,0,0,100))surface.DrawRect(0,0,b,c)end;function SKIN:PaintMenuOption(a,b,c)if a.m_bBackground and(a.Hovered or a.Highlight)then self.tex.MenuBG_Hover(0,0,b,c)end;if a:GetChecked()then self.tex.Menu_Check(5,c/2-7,15,15)end end;function SKIN:PaintMenuRightArrow(a,b,c)self.tex.Menu.RightArrow(0,0,b,c)end;function SKIN:PaintPropertySheet(a,b,c)local f=a:GetActiveTab()local g=0;if f then g=f:GetTall()-8 end;self.tex.Tab_Control(0,g,b,c-g)end;function SKIN:PaintTab(a,b,c)if a:IsActive()then return self:PaintActiveTab(a,b,c)end;self.tex.TabT_Inactive(0,0,b,c)end;function SKIN:PaintActiveTab(a,b,c)self.tex.TabT_Active(0,0,b,c)end;function SKIN:PaintWindowCloseButton(a,b,c)if not a.m_bBackground then return end;if a:GetDisabled()then return self.tex.Window.Close(0,0,b,c,Color(255,255,255,50))end;if a.Depressed or a:IsSelected()then return self.tex.Window.Close_Down(0,0,b,c)end;if a.Hovered then return self.tex.Window.Close_Hover(0,0,b,c)end;self.tex.Window.Close(0,0,b,c)end;function SKIN:PaintWindowMinimizeButton(a,b,c)if not a.m_bBackground then return end;if a:GetDisabled()then return self.tex.Window.Mini(0,0,b,c,Color(255,255,255,50))end;if a.Depressed or a:IsSelected()then return self.tex.Window.Mini_Down(0,0,b,c)end;if a.Hovered then return self.tex.Window.Mini_Hover(0,0,b,c)end;self.tex.Window.Mini(0,0,b,c)end;function SKIN:PaintWindowMaximizeButton(a,b,c)if not a.m_bBackground then return end;if a:GetDisabled()then return self.tex.Window.Maxi(0,0,b,c,Color(255,255,255,50))end;if a.Depressed or a:IsSelected()then return self.tex.Window.Maxi_Down(0,0,b,c)end;if a.Hovered then return self.tex.Window.Maxi_Hover(0,0,b,c)end;self.tex.Window.Maxi(0,0,b,c)end;function SKIN:PaintVScrollBar(a,b,c)self.tex.Scroller.TrackV(0,0,b,c)end;function SKIN:PaintScrollBarGrip(a,b,c)if a:GetDisabled()then return self.tex.Scroller.ButtonV_Disabled(0,0,b,c)end;if a.Depressed then return self.tex.Scroller.ButtonV_Down(0,0,b,c)end;if a.Hovered then return self.tex.Scroller.ButtonV_Hover(0,0,b,c)end;return self.tex.Scroller.ButtonV_Normal(0,0,b,c)end;function SKIN:PaintButtonDown(a,b,c)if not a.m_bBackground then return end;if a.Depressed or a:IsSelected()then return self.tex.Scroller.DownButton_Down(0,0,b,c)end;if a:GetDisabled()then return self.tex.Scroller.DownButton_Dead(0,0,b,c)end;if a.Hovered then return self.tex.Scroller.DownButton_Hover(0,0,b,c)end;self.tex.Scroller.DownButton_Normal(0,0,b,c)end;function SKIN:PaintButtonUp(a,b,c)if not a.m_bBackground then return end;if a.Depressed or a:IsSelected()then return self.tex.Scroller.UpButton_Down(0,0,b,c)end;if a:GetDisabled()then return self.tex.Scroller.UpButton_Dead(0,0,b,c)end;if a.Hovered then return self.tex.Scroller.UpButton_Hover(0,0,b,c)end;self.tex.Scroller.UpButton_Normal(0,0,b,c)end;function SKIN:PaintButtonLeft(a,b,c)if not a.m_bBackground then return end;if a.Depressed or a:IsSelected()then return self.tex.Scroller.LeftButton_Down(0,0,b,c)end;if a:GetDisabled()then return self.tex.Scroller.LeftButton_Dead(0,0,b,c)end;if a.Hovered then return self.tex.Scroller.LeftButton_Hover(0,0,b,c)end;self.tex.Scroller.LeftButton_Normal(0,0,b,c)end;function SKIN:PaintButtonRight(a,b,c)if not a.m_bBackground then return end;if a.Depressed or a:IsSelected()then return self.tex.Scroller.RightButton_Down(0,0,b,c)end;if a:GetDisabled()then return self.tex.Scroller.RightButton_Dead(0,0,b,c)end;if a.Hovered then return self.tex.Scroller.RightButton_Hover(0,0,b,c)end;self.tex.Scroller.RightButton_Normal(0,0,b,c)end;function SKIN:PaintComboDownArrow(a,b,c)if a.ComboBox:GetDisabled()then return self.tex.Input.ComboBox.Button.Disabled(0,0,b,c)end;if a.ComboBox.Depressed or a.ComboBox:IsMenuOpen()then return self.tex.Input.ComboBox.Button.Down(0,0,b,c)end;if a.ComboBox.Hovered then return self.tex.Input.ComboBox.Button.Hover(0,0,b,c)end;self.tex.Input.ComboBox.Button.Normal(0,0,b,c)end;function SKIN:PaintComboBox(a,b,c)if a:GetDisabled()then return self.tex.Input.ComboBox.Disabled(0,0,b,c)end;if a.Depressed or a:IsMenuOpen()then return self.tex.Input.ComboBox.Down(0,0,b,c)end;if a.Hovered then return self.tex.Input.ComboBox.Hover(0,0,b,c)end;self.tex.Input.ComboBox.Normal(0,0,b,c)end;function SKIN:PaintListBox(a,b,c)self.tex.Input.ListBox.Background(0,0,b,c)end;function SKIN:PaintNumberUp(a,b,c)if a:GetDisabled()then return self.tex.Input.UpDown.Up.Disabled(0,0,b,c)end;if a.Depressed then return self.tex.Input.UpDown.Up.Down(0,0,b,c)end;if a.Hovered then return self.tex.Input.UpDown.Up.Hover(0,0,b,c)end;self.tex.Input.UpDown.Up.Normal(0,0,b,c)end;function SKIN:PaintNumberDown(a,b,c)if a:GetDisabled()then return self.tex.Input.UpDown.Down.Disabled(0,0,b,c)end;if a.Depressed then return self.tex.Input.UpDown.Down.Down(0,0,b,c)end;if a.Hovered then return self.tex.Input.UpDown.Down.Hover(0,0,b,c)end;self.tex.Input.UpDown.Down.Normal(0,0,b,c)end;function SKIN:PaintTreeNode(a,b,c)if not a.m_bDrawLines then return end;surface.SetDrawColor(self.Colours.Tree.Lines)if a.m_bLastChild then surface.DrawRect(9,0,1,7)surface.DrawRect(9,7,9,1)else surface.DrawRect(9,0,1,c)surface.DrawRect(9,7,9,1)end end;function SKIN:PaintTreeNodeButton(a,b,c)if not a.m_bSelected then return end;local b,h=a:GetTextSize()self.tex.Selection(38,0,b+6,c)end;function SKIN:PaintSelection(a,b,c)self.tex.Selection(0,0,b,c)end;function SKIN:PaintSliderKnob(a,b,c)if a:GetDisabled()then return self.tex.Input.Slider.H.Disabled(0,0,b,c)end;if a.Depressed then return self.tex.Input.Slider.H.Down(0,0,b,c)end;if a.Hovered then return self.tex.Input.Slider.H.Hover(0,0,b,c)end;self.tex.Input.Slider.H.Normal(0,0,b,c)end;local function i(j,k,b,c,l)if not l then return end;local m=b/l;for n=0,l do surface.DrawRect(j+n*m,k+4,1,5)end end;function SKIN:PaintNumSlider(a,b,c)surface.SetDrawColor(Color(0,0,0,100))surface.DrawRect(8,c/2-1,b-15,1)i(8,c/2-1,b-16,1,a.m_iNotches)end;function SKIN:PaintProgress(a,b,c)self.tex.ProgressBar.Back(0,0,b,c)self.tex.ProgressBar.Front(0,0,b*a:GetFraction(),c)end;function SKIN:PaintCollapsibleCategory(a,b,c)if c<21 then return self.tex.CategoryList.Header(0,0,b,c)end;self.tex.CategoryList.Inner(0,0,b,63)end;function SKIN:PaintCategoryList(a,b,c)self.tex.CategoryList.Outer(0,0,b,c)end;function SKIN:PaintCategoryButton(a,b,c)if a.AltLine then if a.Depressed or a.m_bSelected then surface.SetDrawColor(self.Colours.Category.LineAlt.Button_Selected)elseif a.Hovered then surface.SetDrawColor(self.Colours.Category.LineAlt.Button_Hover)else surface.SetDrawColor(self.Colours.Category.LineAlt.Button)end else if a.Depressed or a.m_bSelected then surface.SetDrawColor(self.Colours.Category.Line.Button_Selected)elseif a.Hovered then surface.SetDrawColor(self.Colours.Category.Line.Button_Hover)else surface.SetDrawColor(self.Colours.Category.Line.Button)end end;surface.DrawRect(0,0,b,c)end;function SKIN:PaintListViewLine(a,b,c)if a:IsSelected()then self.tex.Input.ListBox.EvenLineSelected(0,0,b,c)elseif a.Hovered then self.tex.Input.ListBox.Hovered(0,0,b,c)elseif a.m_bAlt then self.tex.Input.ListBox.EvenLine(0,0,b,c)end end;function SKIN:PaintListView(a,b,c)if not a.m_bBackground then return end;self.tex.Input.ListBox.Background(0,0,b,c)end;function SKIN:PaintTooltip(a,b,c)self.tex.Tooltip(0,0,b,c)end;function SKIN:PaintMenuBar(a,b,c)self.tex.Menu_Strip(0,0,b,c)end;derma.DefineSkin("CloudMusicDermaSkin","Windows 10 UI used by CloudMusic",SKIN)
@@ -9,6 +16,7 @@ if CLIENT then
     print("    Cloud Music for LUA    \n")
     print("         By  Texas         \n")
     print("===========================")
+    Print("Initializing CloudMusic "..CLOUDMUSIC_VER)
     local function Init()
         if CloudMusic and CloudMusic.Remove then
             local players = player.GetAll()
@@ -76,19 +84,23 @@ if CLIENT then
             local temp = table.Copy(settings)
             temp["version"] = CLOUDMUSIC_SETTING_FILE_VER
             file.Write(settingFilePath, util.TableToJSON(temp))
+            Print("User settings saved")
         end
         local defaultSettings = table.Copy(settings)
         local defaultKeys = GetStringTableKeys(defaultSettings)
         if not file.Exists(settingFilePath, "DATA") then
             SaveSettings()
+            Print("No settings file, creating a new file")
         else
             local json = util.JSONToTable(file.Read(settingFilePath))
             if not json then
                 SaveSettings()
+                Print("Invalid settings file, resetting settings file")
             else
                 if json["version"] ~= CLOUDMUSIC_SETTING_FILE_VER then
                     SaveSettings()
                     json = settings
+                    Print("Settings file version is different from current version, resetting setttings file")
                 end
                 local jsonKeys = GetStringTableKeys(json)
                 for i=1,#jsonKeys do
@@ -106,6 +118,7 @@ if CLIENT then
                 end
                 settings = json
                 SaveSettings()
+                Print("User settings loaded")
             end
         end
         local function GetSettings(name)
@@ -184,6 +197,7 @@ if CLIENT then
             additive = false,
             outline = false,
         })
+        Print("Fonts created")
         local winw,winh = ScrW()*0.8,ScrH()*0.7
         local targetOpacity = 0
         local isDragging = false
@@ -213,23 +227,28 @@ if CLIENT then
             if not GetSettings("CloudMusicLyric") then return end
             lrcStartPos = 1
             transLrcStartPos = 1
+            Print("Fetching the lyric of "..currentPlaying.Name)
             http.Fetch("http://api.texl.top/netease/lyric/?id="..CloudMusic.CurrentPlaying.ID, function(body)
                 local json = util.JSONToTable(body)
                 if not json then
                     notification.AddLegacy("无法获取 "..currentPlaying.Name.." 的歌词", NOTIFY_ERROR, 3)
+                    Print("Failed to fetch the lyric of "..currentPlaying.Name)
                     return
                 end
                 if json["code"] ~= 200 then
                     notification.AddLegacy("无法获取 "..currentPlaying.Name.." 的歌词（"..json["msg"].."）", NOTIFY_ERROR, 3)
+                    Print("Failed to fetch the lyric of "..currentPlaying.Name.." because "..json["msg"])
                     return
                 end
                 if json["lyric"] == "" or not json["lyric"]["lrc"] then
                     notification.AddLegacy("歌曲 "..currentPlaying.Name.." 暂无歌词", NOTIFY_GENERIC, 3)
+                    Print("Song "..currentPlaying.Name.." doesn't have a lyric")
                     return
                 end
                 if CloudMusic.CurrentPlaying == nil or currentPlaying.ID ~= CloudMusic.CurrentPlaying.ID then return end
                 lrc = json["lyric"]["lrc"]
                 transLrc = json["lyric"]["tlrc"]
+                Print("Fetch lyric successed")
             end, function()notification.AddLegacy("无法获取 "..currentPlaying.Name.." 的歌词", NOTIFY_ERROR, 3) end)
         end
         local function SongEnded()
@@ -262,6 +281,7 @@ if CLIENT then
             notification.AddLegacy("无法播放 "..CloudMusic.CurrentPlaying.Name, NOTIFY_ERROR, 3)
             if errorCount == 5 then
                 notification.AddLegacy("由于已经连续5次无法播放，将停止尝试", NOTIFY_GENERIC, 3)
+                Print("Play error count reached 5, stop trying")
                 errorCount = 0
                 return
             end
@@ -456,15 +476,19 @@ if CLIENT then
             CloudMusic.ShowRecommend:SetVisible(false)
             CloudMusic.ShowUserPlaylists:SetVisible(false)
             if GetSettings("CloudMusicUserToken") == "" then
+                Print("No user token, using default layout")
                 CloudMusic.Login:SetVisible(true)
             else
+                Print("User token detected, try to fetch user info")
                 TokenRequest("https://api.texl.top/node/login/status?u="..LocalPlayer():SteamID64(),function(body)
                     userDetail = util.JSONToTable(body)
                     if userDetail == nil or userDetail["code"] ~= 200 then
                         notification.AddLegacy("获取网易云用户信息失败", NOTIFY_ERROR, 3)
+                        Print("Failed to fetch user info, using default layout")
                         return
                     end
                     userDetail = userDetail["profile"]
+                    Print("User is logged in, using logged in layout")
                     CloudMusic.Logout:SetVisible(true)
                     CloudMusic.UserInfo:SetVisible(true)
                     CloudMusic.ShowRecommend:SetVisible(true)
@@ -528,6 +552,7 @@ if CLIENT then
                 end,function()
                     notification.AddLegacy("获取网易云用户信息失败", NOTIFY_ERROR, 3)
                     CloudMusic.Login:SetVisible(true)
+                    Print("Failed to fetch user info, using default layout")
                 end)
             end
         end
@@ -759,9 +784,14 @@ if CLIENT then
                 CloudMusic.LoginPrompt.Username:SetDisabled(true)
                 CloudMusic.LoginPrompt.Password:SetDisabled(true)
                 self:SetDisabled(true)
+                Print("Logging in...")
                 if CloudMusic.LoginPrompt.Mode == "Email" then
                     TokenRequest("https://api.texl.top/node/login?email="..CloudMusic.LoginPrompt.Username:GetValue():JavascriptSafe().."&password="..CloudMusic.LoginPrompt.Password:GetValue():JavascriptSafe().."&u="..LocalPlayer():SteamID64(),function(body)
                         local result = util.JSONToTable(body)
+                        if result == nil then
+                            SetDMUISkin(Derma_Message("登录失败", "错误", "好的"))
+                            return
+                        end
                         if result["code"] ~= 200 then
                             SetDMUISkin(Derma_Message("登录失败\n"..result["msg"], "错误", "好的"))
                             return
@@ -770,9 +800,11 @@ if CLIENT then
                         SetDMUISkin(Derma_Message("登录成功！欢迎回来，"..result["profile"]["nickname"], "欢迎", "好的"))
                         InitUserInfo()
                         HideOverlay()
+                        Print("User logged in")
                         CloudMusic.LoginPrompt:Remove()
                     end,function()
                         SetDMUISkin(Derma_Message("登录失败", "错误", "好的"))
+                        Print("Login failed")
                     end,function()
                         CloudMusic.LoginPrompt.PhoneAreaNum:SetDisabled(false)
                         CloudMusic.LoginPrompt.Username:SetDisabled(false)
@@ -794,9 +826,11 @@ if CLIENT then
                         SetDMUISkin(Derma_Message("登录成功！欢迎回来，"..result["profile"]["nickname"], "欢迎", "好的"))
                         InitUserInfo()
                         HideOverlay()
+                        Print("User logged in")
                         CloudMusic.LoginPrompt:Remove()
                     end,function()
                         SetDMUISkin(Derma_Message("登录失败", "错误", "好的"))
+                        Print("Login failed")
                     end,function()
                         CloudMusic.LoginPrompt.PhoneAreaNum:SetDisabled(false)
                         CloudMusic.LoginPrompt.Username:SetDisabled(false)
@@ -824,8 +858,10 @@ if CLIENT then
                 SetSettings("CloudMusicUserToken","")
                 InitUserInfo()
                 SetDMUISkin(Derma_Message("注销成功","成功","好的"))
+                Print("User logged out")
             end,function()
                 SetDMUISkin(Derma_Message("注销失败","错误","好的"))
+                Print("Failed to log out")
             end)
         end
         CloudMusic.UserInfo = vgui.Create("DButton",CloudMusic)
@@ -872,6 +908,7 @@ if CLIENT then
             CloudMusic.UInfo.Signin:SetText("签到")
             function CloudMusic.UInfo.Signin:DoClick()
                 self:SetDisabled(true)
+                Print("Signing in with Netease Android client")
                 TokenRequest("https://api.texl.top/node/daily_signin?t="..os.time(),function(body)
                     local json = util.JSONToTable(body)
                     if json["code"] == 200 then
@@ -879,8 +916,10 @@ if CLIENT then
                     else
                         SetDMUISkin(Derma_Message(json["msg"], "签到", "好的"))
                     end
+                    Print("Sign in successed")
                 end,function()
                     SetDMUISkin(Derma_Message("签到失败", "签到", "好的"))
+                    Print("Failed to sign in")
                 end,function()
                     self:SetDisabled(false)
                 end)
@@ -893,9 +932,11 @@ if CLIENT then
                 CloudMusic.UInfo:Remove()
                 HideOverlay()
             end
+            Print("Fetching user details")
             TokenRequest("https://api.texl.top/node/user/subcount",function(body)
                 local json = util.JSONToTable(body)
                 if json["code"] == 200 and IsValid(CloudMusic.UInfo) then
+                    Print("Fetch user details successed")
                     CloudMusic.UInfo.Details:AppendText("你订阅了"..json["djRadioCount"].."个电台\n收藏了"..json["mvCount"].."个MV\n关注了"..json["artistCount"].."个歌手\n创建了"..json["createDjRadioCount"].."个电台\n创建了"..json["createdPlaylistCount"].."个歌单\n收藏了"..json["subPlaylistCount"].."个歌单")
                 end
             end)
@@ -955,6 +996,7 @@ if CLIENT then
                 return
             end
             SetTopFormsDisabled(true)
+            Print("Fetching playlist")
             httpGet("https://music.163.com/api/playlist/detail?id="..songlist, function(json)
                 local obj = util.JSONToTable(json)
                 if obj["code"] ~= 200 then
@@ -964,6 +1006,7 @@ if CLIENT then
                 CloudMusic.PrevPage:SetVisible(false)
                 CloudMusic.NextPage:SetVisible(false)
                 CloudMusic.Songlist:Resolve(obj["result"]["tracks"])
+                Print("Fetch playlist successed")
             end, function()SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的"))end,nil,function()
                 SetTopFormsDisabled(false)
             end)
@@ -988,6 +1031,7 @@ if CLIENT then
         CloudMusic.SearchForm.Search:SetText("搜索")
         CloudMusic.SearchForm.Search.DoClick = function()
             SetTopFormsDisabled(true)
+            Print("Searching songs")
             HttpPost("http://music.163.com/api/search/pc", {
                 ["s"] = CloudMusic.SearchForm.Input:GetValue(),
                 ["type"] = "1",
@@ -1011,6 +1055,7 @@ if CLIENT then
                 songCount = json["result"]["songCount"]
                 searchWord = CloudMusic.SearchForm.Input:GetValue()
                 CloudMusic.Songlist:Resolve(json["result"]["songs"])
+                Print("Search successed")
             end, function()SetDMUISkin(Derma_Message("搜索失败", "错误", "好的")) end,nil,function()
                 SetTopFormsDisabled(false)
             end)
@@ -1024,6 +1069,7 @@ if CLIENT then
         CloudMusic.ShowRecommend.Paint = ButtonPaint
         function CloudMusic.ShowRecommend:DoClick()
             SetTopFormsDisabled(true)
+            Print("Fetching user recommend songs")
             TokenRequest("https://api.texl.top/node/recommend/songs?u="..LocalPlayer():SteamID64(),function(body)
                 local result = util.JSONToTable(body)
                 if result["code"] ~= 200 then
@@ -1031,6 +1077,7 @@ if CLIENT then
                     return
                 end
                 CloudMusic.Songlist:Resolve(result["recommend"])
+                Print("Fetch user recommend songs successed")
             end,function()
                 notification.AddLegacy("无法获取每日推荐", NOTIFY_ERROR, 3)
             end,function()
@@ -1045,6 +1092,7 @@ if CLIENT then
         CloudMusic.ShowUserPlaylists.Paint = ButtonPaint
         function CloudMusic.ShowUserPlaylists:DoClick()
             SetTopFormsDisabled(true)
+            Print("Fetching user playlists")
             TokenRequest("https://api.texl.top/node/user/playlist?uid="..userDetail["userId"],function(body)
                 local result = util.JSONToTable(body)
                 if result["code"] ~= 200 then
@@ -1054,6 +1102,7 @@ if CLIENT then
                 CloudMusic.Playlists:Resolve(result["playlist"])
                 CloudMusic.Songlist:SetVisible(false)
                 CloudMusic.Playlists:SetVisible(true)
+                Print("Fetch user playlists successed")
             end,function()
                 notification.AddLegacy("无法获取用户歌单", NOTIFY_ERROR, 3)
             end,function()
@@ -1401,9 +1450,11 @@ if CLIENT then
                 self.CurrentChannel = nil
             end
             local cId = self.CurrentPlaying.ID
+            Print("Try to play "..self.CurrentPlaying.Name.." - "..self.CurrentPlaying.Artist)
             notification.AddProgress("CloudMusicBuffering", "正在尝试播放"..self.CurrentPlaying.Name.." - "..self.CurrentPlaying.Artist)
             buffering = true
             GetSongURL(cId,function(url)
+                Print("Fetch song url successed")
                 sound.PlayURL(url, "noblock", function(station)
                     buffering = false
                     notification.Kill("CloudMusicBuffering")
@@ -1418,6 +1469,7 @@ if CLIENT then
                                 setArtist("]]..self.CurrentPlaying.Artist:JavascriptSafe()..[[");
                             ]])
                             hook.Run("CloudMusicMusicPlaying",self.CurrentPlaying)
+                            Print("Start to play "..self.CurrentPlaying.Name.." - "..self.CurrentPlaying.Artist)
                         end
                     else
                         SongPlayError()
@@ -1898,6 +1950,7 @@ if CLIENT then
                 setTextShadow(]]..(GetSettings("CloudMusicHUDTextShadow") and "true" or "false")..[[);
             ]])
             hook.Run("CloudMusicHUDReady")
+            Print("HUD ready")
         end
         function CloudMusic.HUD:Think()
             self:SetSize(ScrW(),ScrH())
@@ -2237,9 +2290,23 @@ if CLIENT then
             end):SetIcon("icon16/page_white_copy.png")
             menu:AddSpacer()
             menu:AddOption("将所有黑名单玩家移出",function()
-                self.Users = {}
-                self:Sync()
+                SetDMUISkin(Derma_Query("此操作无法撤销，你确定吗？","清空黑名单","确定",function()
+                    self.Users = {}
+                    self:Sync()
+                end,"算了"))
             end):SetIcon("icon16/delete.png")
+            menu:AddOption("将所有玩家移入黑名单",function()
+                SetDMUISkin(Derma_Query("你确定要这样做吗？","将所有玩家移入黑名单","确定",function()
+                    local players = player.GetAll()
+                    for _,v in pairs(players) do
+                        table.insert(self.Users, {
+                            Name = v:Nick(),
+                            ID = v:SteamID64()
+                        })
+                    end
+                    self:Sync()
+                end,"算了"))
+            end)
             SetUISkin(menu)
             menu:Open()
         end
@@ -2261,6 +2328,15 @@ if CLIENT then
                         line:SetColumnText(1,"×")
                     end
                     line.Blacklisted = blacklisted
+                end
+            end
+            for i=1,#self.Users do
+                local p = self.Users[i]
+                for j=1,#self.Users do
+                    local v = self.Users[j]
+                    if v.ID == p.ID and i ~= j then
+                        table.remove(self.Users,j)
+                    end
                 end
             end
             self:Save()
@@ -2433,10 +2509,11 @@ if CLIENT then
             else
                 self:RunJavascript("hideWaifu();")
             end
-            if input.IsMouseDown(MOUSE_LEFT) and not self.MousePressed and x >= self.WaifuPos["x"] and y >= self.WaifuPos["y"] and x <= self.WaifuPos["x"] + self.WaifuPos["w"] and y <= self.WaifuPos["y"] + self.WaifuPos["h"] then
+            if input.IsMouseDown(MOUSE_LEFT) and not self.MousePressed and x >= self.WaifuPos["x"] and y >= self.WaifuPos["y"] and x <= self.WaifuPos["x"] + self.WaifuPos["w"] and y <= self.WaifuPos["y"] + self.WaifuPos["h"] and currentShowingPage == "Settings" then
                 self.MousePressed = true
                 sound.PlayURL("http://files.m4tec.org/index.php/s/apjmfZ7AasncR8A/download", "", function(station)
                     if IsValid(station) then
+                        station:SetVolume(1)
                         station:Play()
                     end
                 end)
@@ -2503,13 +2580,16 @@ if CLIENT then
         ]])
         if file.Exists("materials/gwenskin/windows10.png", "GAME") then
             SetUISkin(CloudMusic)
+            Print("Derma skin file detected, using CloudMusic Derma skin")
         end
         CloudMusic.Songs = {}
         CloudMusic.Util = {
             ["AddHUDCustomCSSRule"] = function(css)
+                Print("New CSS rule added to HUD")
                 CloudMusic.HUD:RunJavascript("addCSS(\""..css:JavascriptSafe().."\");")
             end,
             ["ClearHUDCustomCSSRules"] = function()
+                Print("All HUD CSS rule removed")
                 CloudMusic.HUD:RunJavascript("removeAllCSS()");
             end
         }
@@ -2532,6 +2612,8 @@ if CLIENT then
             if IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetTime() >= CloudMusic.CurrentChannel:GetLength()-1 and CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_STOPPED then
                 SongEnded()
             end
+        end)
+        timer.Create("CloudMusic_Update",0.1,0,function()
             for i=1,#channelPlayers do
                 local p = channelPlayers[i]
                 if p ~= LocalPlayer() then
@@ -2543,6 +2625,7 @@ if CLIENT then
                 end
             end
         end)
+        timer.Start("CloudMusic_Update")
         net.Receive("ToggleCloudMusic", function()CloudMusic:Toggle()end)
         net.Receive("CloudMusicKeyDown",function()
             if not IsValid(CloudMusic.CurrentChannel) or not CloudMusic.CurrentPlaying then return end
@@ -2571,6 +2654,7 @@ if CLIENT then
             if p == LocalPlayer() or not IsValid(p) then return end
             for _,v in pairs(CloudMusic.Settings.BlacklistUser.Users) do
                 if v.ID == p:SteamID64() then
+                    Print("3D Play of "..v:Nick().." has been blocked")
                     return
                 end
             end
@@ -2601,17 +2685,21 @@ if CLIENT then
         end)
         net.Receive("CloudMusicReqSync", SendSyncData)
         hook.Run("CloudMusicInit")
+        Print("Clientside CloudMusic initialized!")
         CloudMusicInitOnce = true
     end
     hook.Add("InitPostEntity", "CloudMusic_Init", Init)
     concommand.Add("cloudmusic", function()
+        Print("Opening CloudMusic window...")
         CloudMusic:Toggle()
     end, nil, "打开网易云播放器")
     concommand.Add("cloudmusic_reinit",function()
+        Print("Re-initialize CloudMusic...")
         Init()
     end, nil, "重新初始化网易云播放器")
     CreateClientConVar("cloudmusic_ui_debug", "0", false, false, "启用网易云播放器界面调试模式")
     if CloudMusicInitOnce then
+        Print("Old CloudMusic instance detected, doing re-initialize immediately")
         Init()
     end
 end
@@ -2620,6 +2708,7 @@ if SERVER then
     print("    Cloud Music for LUA    \n")
     print("         By  Texas         \n")
     print("===========================")
+    Print("Initializing serverside CloudMusic "..CLOUDMUSIC_VER)
     local function HookKey()
         util.AddNetworkString("ToggleCloudMusic")
         util.AddNetworkString("CloudMusicKeyDown")
@@ -2629,6 +2718,7 @@ if SERVER then
             CloudMusicRegisteredULib = true
             ULib.ucl.registerAccess("cloudmusic3d","user","允许玩家使用3D外放功能","网易云音乐")
         end
+        Print("Serverside CloudMusic initialized!")
     end
     hook.Add("InitPostEntity", "CloudMusic_Init", HookKey)
     hook.Add("PlayerButtonDown", "CloudMusic_KeyPress", function(ply,btn)
@@ -2674,8 +2764,10 @@ if SERVER then
     end)
     if file.Exists("materials/gwenskin/windows10.png", "GAME") then
         resource.AddSingleFile("materials/gwenskin/windows10.png")
+        Print("Derma skin resource detected in server, using server skin file")
     else
         resource.AddWorkshop(1800442580)
+        Print("Derma skin resource doesn't exists in server, using Steam Workshop")
     end
     HookKey()
 end
