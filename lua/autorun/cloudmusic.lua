@@ -4,7 +4,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200118.04"
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200118.05"
 if CLIENT then
     local CLOUDMUSIC_SETTING_FILE_VER = "1.2.0"
     CreateClientConVar("cloudmusic_verbose", "0", true, false, "启用网易云播放器啰嗦模式")
@@ -2651,7 +2651,9 @@ if CLIENT then
                     table.remove(channelPlayers, i)
                 end
             end
-            CloudMusic.HUD:CMUpdate()
+            if CloudMusic.HUD.CMUpdate then
+                CloudMusic.HUD:CMUpdate()
+            end
         end)
         timer.Start("CloudMusic_Update")
         net.Receive("ToggleCloudMusic", function()CloudMusic:Toggle()end)
