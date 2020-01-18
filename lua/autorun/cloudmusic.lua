@@ -4,7 +4,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200118.02"
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200118.03"
 if CLIENT then
     local CLOUDMUSIC_SETTING_FILE_VER = "1.2.0"
     CreateClientConVar("cloudmusic_verbose", "0", true, false, "启用网易云播放器啰嗦模式")
@@ -2641,7 +2641,7 @@ if CLIENT then
         timer.Create("CloudMusic_Update",0.1,0,function()
             for i=1,#channelPlayers do
                 local p = channelPlayers[i]
-                if p ~= LocalPlayer() then
+                if p ~= nil and IsValid(p) and p ~= LocalPlayer() then
                     if IsValid(p.MusicChannel) and p.MusicChannel:GetState() ~= GMOD_CHANNEL_STOPPED then
                         p.MusicChannel:SetPos(p:GetPos())
                     else
