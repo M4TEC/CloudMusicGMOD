@@ -4,7 +4,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200118.01"
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200118.02"
 if CLIENT then
     local CLOUDMUSIC_SETTING_FILE_VER = "1.2.0"
     CreateClientConVar("cloudmusic_verbose", "0", true, false, "启用网易云播放器啰嗦模式")
@@ -996,11 +996,16 @@ if CLIENT then
                 return
             end
             SetTopFormsDisabled(true)
+            local prev,next = CloudMusic.PrevPage:IsVisible(),CloudMusic.NextPage:IsVisible()
+            CloudMusic.PrevPage:SetVisible(false)
+            CloudMusic.NextPage:SetVisible(false)
             Print("Fetching playlist")
-            httpGet("https://music.163.com/api/playlist/detail?id="..songlist, function(json)
+            HttpGet("https://music.163.com/api/playlist/detail?id="..songlist, function(json)
                 local obj = util.JSONToTable(json)
                 if obj["code"] ~= 200 then
                     SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的"))
+                    CloudMusic.PrevPage:SetVisible(prev)
+                    CloudMusic.NextPage:SetVisible(next)
                     return
                 end
                 CloudMusic.PrevPage:SetVisible(false)
@@ -1032,6 +1037,9 @@ if CLIENT then
         CloudMusic.SearchForm.Search.DoClick = function()
             SetTopFormsDisabled(true)
             Print("Searching songs")
+            local prev,next = CloudMusic.PrevPage:IsVisible(),CloudMusic.NextPage:IsVisible()
+            CloudMusic.PrevPage:SetVisible(false)
+            CloudMusic.NextPage:SetVisible(false)
             HttpPost("http://music.163.com/api/search/pc", {
                 ["s"] = CloudMusic.SearchForm.Input:GetValue(),
                 ["type"] = "1",
@@ -1040,6 +1048,8 @@ if CLIENT then
                 local json = util.JSONToTable(body)
                 if not json or json["code"] ~= 200 or json["result"]["songs"] == nil then
                     SetDMUISkin(Derma_Message("搜索失败", "错误", "好的"))
+                    CloudMusic.PrevPage:SetVisible(prev)
+                    CloudMusic.NextPage:SetVisible(next)
                     return
                 end
                 TextMessage("搜索到 "..json["result"]["songCount"].." 首歌曲")
@@ -1070,16 +1080,21 @@ if CLIENT then
         function CloudMusic.ShowRecommend:DoClick()
             SetTopFormsDisabled(true)
             Print("Fetching user recommend songs")
+            local prev,next = CloudMusic.PrevPage:IsVisible(),CloudMusic.NextPage:IsVisible()
+            CloudMusic.PrevPage:SetVisible(false)
+            CloudMusic.NextPage:SetVisible(false)
             TokenRequest("https://api.texl.top/node/recommend/songs?u="..LocalPlayer():SteamID64(),function(body)
                 local result = util.JSONToTable(body)
                 if result["code"] ~= 200 then
-                    notification.AddLegacy("无法获取每日推荐", NOTIFY_ERROR, 3)
+                    SetDMUISkin(Derma_Message("无法获取每日推荐", "错误", "好的"))
+                    CloudMusic.PrevPage:SetVisible(prev)
+                    CloudMusic.NextPage:SetVisible(next)
                     return
                 end
                 CloudMusic.Songlist:Resolve(result["recommend"])
                 Print("Fetch user recommend songs successed")
             end,function()
-                notification.AddLegacy("无法获取每日推荐", NOTIFY_ERROR, 3)
+                SetDMUISkin(Derma_Message("无法获取每日推荐", "错误", "好的"))
             end,function()
                 SetTopFormsDisabled(false)
             end)
@@ -1093,10 +1108,15 @@ if CLIENT then
         function CloudMusic.ShowUserPlaylists:DoClick()
             SetTopFormsDisabled(true)
             Print("Fetching user playlists")
+            local prev,next = CloudMusic.PrevPage:IsVisible(),CloudMusic.NextPage:IsVisible()
+            CloudMusic.PrevPage:SetVisible(false)
+            CloudMusic.NextPage:SetVisible(false)
             TokenRequest("https://api.texl.top/node/user/playlist?uid="..userDetail["userId"],function(body)
                 local result = util.JSONToTable(body)
                 if result["code"] ~= 200 then
-                    notification.AddLegacy("无法获取用户歌单", NOTIFY_ERROR, 3)
+                    SetDMUISkin(Derma_Message("无法获取用户歌单", "错误", "好的"))
+                    CloudMusic.PrevPage:SetVisible(prev)
+                    CloudMusic.NextPage:SetVisible(next)
                     return
                 end
                 CloudMusic.Playlists:Resolve(result["playlist"])
@@ -1104,7 +1124,7 @@ if CLIENT then
                 CloudMusic.Playlists:SetVisible(true)
                 Print("Fetch user playlists successed")
             end,function()
-                notification.AddLegacy("无法获取用户歌单", NOTIFY_ERROR, 3)
+                SetDMUISkin(Derma_Message("无法获取用户歌单", "错误", "好的"))
             end,function()
                 SetTopFormsDisabled(false)
             end)
@@ -1741,6 +1761,7 @@ if CLIENT then
         CloudMusic.Player.VolumeEnchance.Paint = ButtonPaint
         CloudMusic.HUD = vgui.Create("DHTML")
         CloudMusic.HUD:ParentToHUD()
+        CloudMusic.HUD:SetSize(ScrW(),ScrH())
         CloudMusic.HUD:SetHTML([[
                 <html>
                     <head>
@@ -1952,11 +1973,15 @@ if CLIENT then
             hook.Run("CloudMusicHUDReady")
             Print("HUD ready")
         end
-        function CloudMusic.HUD:Think()
+        function CloudMusic.HUD:OnScreenSizeChanged()
             self:SetSize(ScrW(),ScrH())
+        end
+        function CloudMusic.HUD:Think()
             if IsValid(CloudMusic.CurrentChannel) then
                 CloudMusic.CurrentChannel:SetVolume(CloudMusic.Volume)
             end
+        end
+        function CloudMusic.HUD:CMUpdate()
             if not self.Ready then
                 return
             end
@@ -2624,6 +2649,7 @@ if CLIENT then
                     end
                 end
             end
+            CloudMusic.HUD:CMUpdate()
         end)
         timer.Start("CloudMusic_Update")
         net.Receive("ToggleCloudMusic", function()CloudMusic:Toggle()end)
