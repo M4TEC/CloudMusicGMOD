@@ -4,7 +4,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200119"
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200119.01"
 if CLIENT then
     local CLOUDMUSIC_SETTING_FILE_VER = "1.2.0"
     CreateClientConVar("cloudmusic_verbose", "0", true, false, "启用网易云播放器啰嗦模式")
@@ -723,7 +723,7 @@ if CLIENT then
                 if self.Mode == "Email" then
                     self.Username:SetPos(10,75)
                     self.Username:SetSize(300-20,20)
-                else
+                elseif self.Mode == "Phone" then
                     self.Username:SetPos(35,75)
                     self.Username:SetSize(300-45,20)
                 end
@@ -742,7 +742,7 @@ if CLIENT then
             function CloudMusic.LoginPrompt.ToggleMode:Think()
                 if CloudMusic.LoginPrompt.Mode == "Email" then
                     self:SetText("使用手机号登录")
-                else
+                elseif CloudMusic.LoginPrompt.Mode == "Phone" then
                     self:SetText("使用邮箱登录")
                 end
             end
@@ -765,7 +765,7 @@ if CLIENT then
             function CloudMusic.LoginPrompt.Username:Think()
                 if CloudMusic.LoginPrompt.Mode == "Email" then
                     self:SetPlaceholderText("电子邮件")
-                else
+                elseif CloudMusic.LoginPrompt.Mode == "Phone" then
                     self:SetPlaceholderText("手机号")
                 end
             end
@@ -1228,7 +1228,7 @@ if CLIENT then
             end
         end
         function CloudMusic.Songlist:ShowMenu()
-            local menu = DermaMenu("")
+            local menu = DermaMenu(self)
             menu:AddOption("播放",function()
                 CloudMusic:Play(CloudMusic.Songs[self:GetSelectedLine()])
             end):SetIcon("icon16/transmit.png")
@@ -1290,7 +1290,7 @@ if CLIENT then
                 CloudMusic.Songlist:Resolve(obj["result"]["tracks"])
                 CloudMusic.Songlist:SetVisible(true)
                 self:SetVisible(false)
-            end, function()SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的")) end)
+            end, function()SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的"))end)
         end
         function CloudMusic.Playlists:OnRowRightClick(lineID, line)
             self:ShowMenu()
@@ -1306,7 +1306,7 @@ if CLIENT then
             end
         end
         function CloudMusic.Playlists:ShowMenu()
-            local menu = DermaMenu("")
+            local menu = DermaMenu(self)
             menu:AddOption("打开",function()
                 http.Fetch("http://music.163.com/api/playlist/detail?id="..self:GetSelected()[1]:GetColumnText("4"), function(json)
                     local obj = util.JSONToTable(json)
@@ -1637,15 +1637,15 @@ if CLIENT then
                 self.Mode:SetVisible(false)
                 self.CopyLink:SetVisible(false)
                 self.VolumeEnchance:SetVisible(false)
-            else
+            elseif not (self.Prev:IsVisible() or self.PlayPause:IsVisible() or self.Next:IsVisible() or self.Mode:IsVisible() or self.Mode:IsVisible() or self.CopyLink:IsVisible()) then
                 self.Prev:SetVisible(true)
                 self.PlayPause:SetVisible(true)
                 self.Next:SetVisible(true)
                 self.Mode:SetVisible(true)
                 self.CopyLink:SetVisible(true)
-                if CloudMusic.Volume >= 1 then
-                    self.VolumeEnchance:SetVisible(true)
-                end
+            end
+            if CloudMusic.Volume >= 1 and CloudMusic.CurrentPlaying ~= nil then
+                self.VolumeEnchance:SetVisible(true)
             end
         end
         CloudMusic.Player.Prev = vgui.Create("DButton",CloudMusic.Player)
@@ -1658,7 +1658,9 @@ if CLIENT then
         end
         CloudMusic.Player.Prev.Paint = ButtonPaint
         function CloudMusic.Player.Prev:Think()
-            self:SetDisabled(not IsValid(CloudMusic.CurrentChannel))
+            if self:GetDisabled() ~= not IsValid(CloudMusic.CurrentChannel) then
+                self:SetDisabled(not IsValid(CloudMusic.CurrentChannel))
+            end
         end
         CloudMusic.Player.PlayPause = vgui.Create("DButton",CloudMusic.Player)
         CloudMusic.Player.PlayPause:SetPos(winh-44-(winh-149)+13,48)
@@ -1667,7 +1669,7 @@ if CLIENT then
         CloudMusic.Player.PlayPause.DoClick = function()
             if CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_PLAYING or CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_STALLED then
                 CloudMusic.CurrentChannel:Pause()
-            else
+            elseif CloudMusic.CurrentChannel:GetState() ~= GMOD_CHANNEL_PLAYING then
                 CloudMusic.CurrentChannel:Play()
             end
         end
@@ -1676,7 +1678,7 @@ if CLIENT then
             if IsValid(CloudMusic.CurrentChannel) then
                 self:SetDisabled(false)
                 self:SetText((CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_PLAYING or CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_STALLED) and "暂停" or "播放")
-            else
+            elseif not self:GetDisabled() then
                 self:SetText("播放")
                 self:SetDisabled(true)
             end
@@ -1691,7 +1693,9 @@ if CLIENT then
         end
         CloudMusic.Player.Next.Paint = ButtonPaint
         function CloudMusic.Player.Next:Think()
-            self:SetDisabled(not IsValid(CloudMusic.CurrentChannel))
+            if self:GetDisabled() ~= not IsValid(CloudMusic.CurrentChannel) then
+                self:SetDisabled(not IsValid(CloudMusic.CurrentChannel))
+            end
         end
         CloudMusic.Player.Mode = vgui.Create("DButton",CloudMusic.Player)
         CloudMusic.Player.Mode:SetPos(winh-44-(winh-149)+94,48)
@@ -1752,7 +1756,7 @@ if CLIENT then
                     CloudMusic.Volume = 2
                     SetSettings("CloudMusicVolume",2)
                 end
-            else
+            elseif self:IsVisible() then
                 self:SetVisible(false)
             end
         end
@@ -2543,8 +2547,8 @@ if CLIENT then
             self:RunJavascript("reqWaifuPos();")
         end
         function CloudMusic.Settings.LuoTianyi:Think()
-            local x,y = BodyMousePos()
             if self.WaifuPos == nil then return end
+            local x,y = BodyMousePos()
             if x >= self.WaifuPos["x"] and y >= self.WaifuPos["y"] and x <= self.WaifuPos["x"] + self.WaifuPos["w"] and y <= self.WaifuPos["y"] + self.WaifuPos["h"] then
                 self:RunJavascript("showWaifu();")
             else
@@ -2624,6 +2628,7 @@ if CLIENT then
             Print("Derma skin file detected, using CloudMusic Derma skin")
         end
         CloudMusic.Songs = {}
+        local didPlayerPaused = false
         CloudMusic.Util = {
             ["AddHUDCustomCSSRule"] = function(css)
                 Print("New CSS rule added to HUD")
@@ -2632,29 +2637,34 @@ if CLIENT then
             ["ClearHUDCustomCSSRules"] = function()
                 Print("All HUD CSS rule removed")
                 CloudMusic.HUD:RunJavascript("removeAllCSS()");
+            end,
+            ["BeforeChannelForceStop"] = function()
+                if IsValid(CloudMusic.CurrentChannel) then
+                    didPlayerPaused = CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_PAUSED and CloudMusic.CurrentChannel:GetState() ~= GMOD_CHANNEL_STOPPED
+                end
+            end,
+            ["AfterChannelForceStop"] = function()
+                if IsValid(CloudMusic.CurrentChannel) and not didPlayerPaused then
+                    CloudMusic.CurrentChannel:Play()
+                end
             end
         }
         CloudMusic.Playlists:SetVisible(false)
         CloudMusic:SetAlpha(0)
         CloudMusic:SetVisible(false)
         InitUserInfo()
-        local didPlayerPaused = false
         hook.Add("PreCleanupMap","CloudMusic_PreCleanup",function()
-            if IsValid(CloudMusic.CurrentChannel) then
-                didPlayerPaused = CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_PAUSED
-            end
+            CloudMusic.Util:BeforeChannelForceStop()
         end)
         hook.Add("PostCleanupMap", "CloudMusic_PostCleanup", function()
-            if IsValid(CloudMusic.CurrentChannel) and not didPlayerPaused then
-                CloudMusic.CurrentChannel:Play()
-            end
+            CloudMusic.Util:AfterChannelForceStop()
         end)
         hook.Add("Think","CloudMusic_Think",function()
             if IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetTime() >= CloudMusic.CurrentChannel:GetLength()-1 and CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_STOPPED then
                 SongEnded()
             end
         end)
-        timer.Create("CloudMusic_Update",0.1,0,function()
+        timer.Create("CloudMusic_Update",0.15,0,function()
             for i=1,#channelPlayers do
                 local p = channelPlayers[i]
                 if p ~= nil and IsValid(p) and p ~= LocalPlayer() then
