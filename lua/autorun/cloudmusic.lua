@@ -2807,7 +2807,7 @@ if SERVER then
         local volume = net.ReadFloat()
         local id = net.ReadString()
         local time = net.ReadFloat()
-        if ULib ~= nil and not ULib.ucl.query(p,"cloudmusic3d") and valid then return end
+        if ULib ~= nil and not ULib.ucl.query(ply,"cloudmusic3d") and valid then return end
         if volume > 1 then volume = 1 end
         net.Start("CloudMusic3DSync")
         net.WriteEntity(ply)
