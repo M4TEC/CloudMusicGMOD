@@ -4,7 +4,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200120.01"
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200121"
 if CLIENT then
     local CLOUDMUSIC_SETTING_FILE_VER = "1.2.0"
     CreateClientConVar("cloudmusic_verbose", "0", true, false, "启用网易云播放器啰嗦模式")
@@ -133,7 +133,7 @@ if CLIENT then
         end
         surface.CreateFont("CloudMusicTitle", {
             font = "Microsoft YaHei",
-            extended = false,
+            extended = true,
             size = 24,
             weight = 500,
             blursize = 0,
@@ -150,7 +150,7 @@ if CLIENT then
         })
         surface.CreateFont("CloudMusicSubTitle", {
             font = "Microsoft YaHei",
-            extended = false,
+            extended = true,
             size = 22,
             weight = 500,
             blursize = 0,
@@ -167,7 +167,7 @@ if CLIENT then
         })
         surface.CreateFont("CloudMusicSmallTitle", {
             font = "Microsoft YaHei",
-            extended = false,
+            extended = true,
             size = 18,
             weight = 500,
             blursize = 0,
@@ -184,8 +184,25 @@ if CLIENT then
         })
         surface.CreateFont("CloudMusicText", {
             font = "Microsoft YaHei",
-            extended = false,
-            size = 14,
+            extended = true,
+            size = 16,
+            weight = 500,
+            blursize = 0,
+            scanlines = 0,
+            antialias = true,
+            underline = false,
+            italic = false,
+            strikeout = false,
+            symbol = false,
+            rotary = false,
+            shadow = false,
+            additive = false,
+            outline = false,
+        })
+        surface.CreateFont("CloudMusicDermaText", {
+            font = "Microsoft YaHei",
+            extended = true,
+            size = 17,
             weight = 500,
             blursize = 0,
             scanlines = 0,
@@ -426,12 +443,24 @@ if CLIENT then
         end
         local function SetUISkin(panel)
             panel:SetSkin("CloudMusicDermaSkin")
+            if panel:GetFont() == "DermaDefault" then
+                panel:SetFontInternal("CloudMusicDermaText")
+                if panel.SetFont then
+                    panel:SetFont("CloudMusicDermaText")
+                end
+            end
             for _,v in pairs(panel:GetChildren()) do
                 SetUISkin(v)
             end
         end
         local function SetDMUISkin(panel)
             panel:SetSkin("CloudMusicDermaSkin")
+            if panel:GetFont() == "DermaDefault" then
+                panel:SetFontInternal("CloudMusicDermaText")
+                if panel.SetFont then
+                    panel:SetFont("CloudMusicDermaText")
+                end
+            end
             if panel.SetColor then
                 panel:SetColor(Color(0,0,0))
             end
@@ -873,6 +902,7 @@ if CLIENT then
                 CloudMusic.LoginPrompt:Remove()
                 HideOverlay()
             end
+            SetUISkin(CloudMusic.LoginPrompt)
         end
         CloudMusic.Logout = vgui.Create("DButton",CloudMusic)
         CloudMusic.Logout:SetSize(45,20)
@@ -970,6 +1000,7 @@ if CLIENT then
                     CloudMusic.UInfo.Details:AppendText("你订阅了"..json["djRadioCount"].."个电台\n收藏了"..json["mvCount"].."个MV\n关注了"..json["artistCount"].."个歌手\n创建了"..json["createDjRadioCount"].."个电台\n创建了"..json["createdPlaylistCount"].."个歌单\n收藏了"..json["subPlaylistCount"].."个歌单")
                 end
             end)
+            SetUISkin(CloudMusic.UInfo)
         end
         CloudMusic.User = vgui.Create("DHTML",CloudMusic)
         CloudMusic.User:SetPos(winw-80-95-winw*0.4,0)
@@ -1264,6 +1295,7 @@ if CLIENT then
                     Thumbnail = track["album"]["picUrl"]
                 })
             end
+            SetUISkin(self)
         end
         function CloudMusic.Songlist:ShowMenu()
             local menu = DermaMenu(self)
@@ -1342,6 +1374,7 @@ if CLIENT then
             for _,v in ipairs(playlists) do
                 self:AddLine(v["name"],v["creator"]["nickname"],v["trackCount"],v["id"])
             end
+            SetUISkin(self)
         end
         function CloudMusic.Playlists:ShowMenu()
             local menu = DermaMenu(self)
@@ -1457,6 +1490,7 @@ if CLIENT then
                 self:AddLine(v.Name,v.Artist,v.ID)
             end
             self:Save()
+            SetUISkin(self)
         end
         function CloudMusic.Playlist:AddMusic(music)
             for _,v in pairs(self:GetLines()) do
@@ -2423,6 +2457,7 @@ if CLIENT then
                 end
             end
             self:SaveBlacklist()
+            SetUISkin(self)
         end
         CloudMusic.Settings.Playerlist.BlacklistUsers = GetSettings("CloudMusicBlacklistUsers")
         if CloudMusic.Settings.Playerlist.BlacklistUsers == nil then
