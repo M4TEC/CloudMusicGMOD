@@ -270,6 +270,10 @@ if CLIENT then
             end, function()notification.AddLegacy("无法获取 "..currentPlaying.Name.." 的歌词", NOTIFY_ERROR, 3)end)
         end
         local function SongEnded()
+            if CloudMusic.NextPlay then
+                CloudMusic:Play(CloudMusic.NextPlay)
+                CloudMusic.NextPlay = nil
+            end
             if GetSettings("CloudMusicPlayMode") == "ListLoop" then
                 CloudMusic:Next()
             elseif GetSettings("CloudMusicPlayMode") == "List" then
@@ -420,14 +424,11 @@ if CLIENT then
             end
         end
         local function Create3DChannel(id,ply)
-            print("cc:"..(ply.ChannelCreating and "YES" or "NO"))
             if IsValid(ply) and not ply.ChannelCreating then
-                print("Creating a 3D Channel")
                 ply.ChannelCreating = true
                 GetSongURL(id,function(url)
                     sound.PlayURL(url,"noblock 3d",function(station)
                         if IsValid(station) and IsValid(ply) then
-                            print("Add "..ply:Nick().." to channel players")
                             table.insert(channelPlayers, ply)
                             ply.MusicChannel = station
                             ply.MusicChannelID = id
@@ -1306,6 +1307,9 @@ if CLIENT then
             menu:AddOption("播放",function()
                 CloudMusic:Play(CloudMusic.Songs[self:GetSelectedLine()])
             end):SetIcon("icon16/transmit.png")
+            menu:AddOption("下一首播放",function()
+                CloudMusic.NextPlay = CloudMusic.Songs[self:GetSelectedLine()]
+            end):SetIcon("icon16/transmit_go.png")
             menu:AddOption("添加到播放列表",function()
                 CloudMusic.Playlist:AddMusic(CloudMusic.Songs[self:GetSelectedLine()])
             end):SetIcon("icon16/add.png")
@@ -1460,7 +1464,7 @@ if CLIENT then
                 CloudMusic:Play(self:GetSelectedLine())
             end):SetIcon("icon16/transmit.png")
             menu:AddOption("下一首播放",function()
-            
+                CloudMusic.NextPlay = self:GetSelectedLine()
             end):SetIcon("icon16/transmit_go.png")
             menu:AddOption("复制歌曲ID",function()
                 SetClipboardText(self.Songs[self:GetSelectedLine()].ID)
@@ -2810,7 +2814,6 @@ if CLIENT then
                 end
             end
             if valid then
-                print("Received 3D Data")
                 p.MusicChannelState = state
                 if not IsValid(p.MusicChannel) then
                     Create3DChannel(id,p)
