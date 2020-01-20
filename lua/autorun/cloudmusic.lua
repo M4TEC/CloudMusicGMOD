@@ -2019,6 +2019,48 @@ if CLIENT then
             if IsValid(CloudMusic.CurrentChannel) then
                 CloudMusic.CurrentChannel:SetVolume(CloudMusic.Volume)
             end
+            if lrc and IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_PLAYING then
+                local mainLrc = ""
+                local subLrc = ""
+                for i=lrcStartPos,#lrc do
+                    local line = lrc[i]
+                    if not IsValid(CloudMusic.CurrentChannel) then break end
+                    if i == #lrc or lrc[i+1].Time > CloudMusic.CurrentChannel:GetTime()*1000 then
+                        if lrc[i].Time < CloudMusic.CurrentChannel:GetTime()*1000 then
+                            mainLrc = line.Value
+                            if not transLrc and i ~= #lrc then
+                                subLrc = lrc[i+1].Value
+                            end
+                        else
+                            lrcStartPos = 1
+                            break
+                        end
+                        lrcStartPos = i
+                        break
+                    end
+                end
+                if transLrc and mainLrc ~= "" then
+                    for i=transLrcStartPos,#transLrc do
+                        local line = transLrc[i]
+                        if not IsValid(CloudMusic.CurrentChannel) then break end
+                        if i == #transLrc or transLrc[i+1].Time > CloudMusic.CurrentChannel:GetTime()*1000 then
+                            if transLrc[i].Time < CloudMusic.CurrentChannel:GetTime()*1000 then
+                                subLrc = line.Value
+                            else
+                                transLrcStartPos = 1
+                                break
+                            end
+                            transLrcStartPos = i
+                            break
+                        end
+                    end
+                end
+                if self.Ready then
+                    self:RunJavascript([[
+                        setLrc("]]..mainLrc:JavascriptSafe()..[[","]]..subLrc:JavascriptSafe()..[[");
+                    ]])
+                end
+            end
         end
         function CloudMusic.HUD:CMUpdate()
             if not self.Ready then
@@ -2037,48 +2079,6 @@ if CLIENT then
                 self:RunJavascript([[
                     setPercent(]]..(CloudMusic.CurrentChannel:GetTime() / CloudMusic.CurrentChannel:GetLength() * 100)..[[);
                 ]])
-                if lrc and IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_PLAYING then
-                    local mainLrc = ""
-                    local subLrc = ""
-                    for i=lrcStartPos,#lrc do
-                        local line = lrc[i]
-                        if not IsValid(CloudMusic.CurrentChannel) then break end
-                        if i == #lrc or lrc[i+1].Time > CloudMusic.CurrentChannel:GetTime()*1000 then
-                            if lrc[i].Time < CloudMusic.CurrentChannel:GetTime()*1000 then
-                                mainLrc = line.Value
-                                if not transLrc and i ~= #lrc then
-                                    subLrc = lrc[i+1].Value
-                                end
-                            else
-                                lrcStartPos = 1
-                                break
-                            end
-                            lrcStartPos = i
-                            break
-                        end
-                    end
-                    if transLrc and mainLrc ~= "" then
-                        for i=transLrcStartPos,#transLrc do
-                            local line = transLrc[i]
-                            if not IsValid(CloudMusic.CurrentChannel) then break end
-                            if i == #transLrc or transLrc[i+1].Time > CloudMusic.CurrentChannel:GetTime()*1000 then
-                                if transLrc[i].Time < CloudMusic.CurrentChannel:GetTime()*1000 then
-                                    subLrc = line.Value
-                                else
-                                    transLrcStartPos = 1
-                                    break
-                                end
-                                transLrcStartPos = i
-                                break
-                            end
-                        end
-                    end
-                    if self.Ready then
-                        self:RunJavascript([[
-                            setLrc("]]..mainLrc:JavascriptSafe()..[[","]]..subLrc:JavascriptSafe()..[[");
-                        ]])
-                    end
-                end
             else
                 self:RunJavascript("hide()")
                 self.State = "HIDE"
