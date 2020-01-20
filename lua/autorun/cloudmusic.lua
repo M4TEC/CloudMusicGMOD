@@ -22,6 +22,7 @@ if CLIENT then
             local players = player.GetAll()
             for i=1,#players do
                 local p = players[i]
+                p.ChannelCreating = false
                 if IsValid(p.MusicChannel) then
                     p.MusicChannel:Stop()
                     p.MusicChannel = nil
@@ -386,7 +387,7 @@ if CLIENT then
             if GetSettings("CloudMusicUseServer") then
                 TokenRequest("https://cm.m4tec.org/api/song/url?id="..id.."&t="..os.time(),function(body)
                     local result = util.JSONToTable(body)
-                    if result == nil then
+                    if not result or not result["data"] or not result["data"][1] or not result["data"][1]["url"] then
                         if type(callback) == "function" then
                             callback("https://music.163.com/song/media/outer/url?id="..id..".mp3")
                         end
@@ -419,11 +420,14 @@ if CLIENT then
             end
         end
         local function Create3DChannel(id,ply)
+            print("cc:"..(ply.ChannelCreating and "YES" or "NO"))
             if IsValid(ply) and not ply.ChannelCreating then
+                print("Creating a 3D Channel")
                 ply.ChannelCreating = true
                 GetSongURL(id,function(url)
                     sound.PlayURL(url,"noblock 3d",function(station)
                         if IsValid(station) and IsValid(ply) then
+                            print("Add "..ply:Nick().." to channel players")
                             table.insert(channelPlayers, ply)
                             ply.MusicChannel = station
                             ply.MusicChannelID = id
@@ -1455,6 +1459,9 @@ if CLIENT then
             menu:AddOption("播放",function()
                 CloudMusic:Play(self:GetSelectedLine())
             end):SetIcon("icon16/transmit.png")
+            menu:AddOption("下一首播放",function()
+            
+            end):SetIcon("icon16/transmit_go.png")
             menu:AddOption("复制歌曲ID",function()
                 SetClipboardText(self.Songs[self:GetSelectedLine()].ID)
                 SetDMUISkin(Derma_Message("已复制到剪贴板", "复制成功", "好的"))
@@ -2061,9 +2068,6 @@ if CLIENT then
             self:SetSize(ScrW(),ScrH())
         end
         function CloudMusic.HUD:Think()
-            if IsValid(CloudMusic.CurrentChannel) then
-                CloudMusic.CurrentChannel:SetVolume(CloudMusic.Volume)
-            end
             if lrc and IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_PLAYING then
                 local mainLrc = ""
                 local subLrc = ""
@@ -2736,6 +2740,9 @@ if CLIENT then
             if IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetTime() >= CloudMusic.CurrentChannel:GetLength()-1 and CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_STOPPED then
                 SongEnded()
             end
+            if IsValid(CloudMusic.CurrentChannel) then
+                CloudMusic.CurrentChannel:SetVolume(CloudMusic.Volume)
+            end
         end)
         timer.Create("CloudMusic_Update",0.15,0,function()
             for i=1,#channelPlayers do
@@ -2746,6 +2753,7 @@ if CLIENT then
                         if p:GetObserverMode() == OBS_MODE_NONE and p.MusicChannel:GetState() == GMOD_CHANNEL_STOPPED and (p.MusicChannelState == GMOD_CHANNEL_PLAYING or p.MusicChannelState == GMOD_CHANNEL_STALLED) then
                             p.MusicChannel:Play()
                             if p.MusicChannelForcedStop then
+                                p.MusicChannelForcedStop = false
                                 net.Start("CloudMusicReqSync")
                                 net.SendToServer()
                             end
@@ -2802,6 +2810,7 @@ if CLIENT then
                 end
             end
             if valid then
+                print("Received 3D Data")
                 p.MusicChannelState = state
                 if not IsValid(p.MusicChannel) then
                     Create3DChannel(id,p)
