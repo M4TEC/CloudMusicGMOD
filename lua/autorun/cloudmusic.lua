@@ -4,7 +4,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200120"
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200120.01"
 if CLIENT then
     local CLOUDMUSIC_SETTING_FILE_VER = "1.2.0"
     CreateClientConVar("cloudmusic_verbose", "0", true, false, "启用网易云播放器啰嗦模式")
@@ -489,6 +489,7 @@ if CLIENT then
                     userDetail = util.JSONToTable(body)
                     if userDetail == nil or userDetail["code"] ~= 200 then
                         notification.AddLegacy("获取网易云用户信息失败", NOTIFY_ERROR, 3)
+                        CloudMusic.Login:SetVisible(true)
                         Print("Failed to fetch user info, using default layout")
                         return
                     end
@@ -960,6 +961,10 @@ if CLIENT then
             Print("Fetching user details")
             TokenRequest("https://cm.m4tec.org/api/user/subcount?u="..LocalPlayer():SteamID64(),function(body)
                 local json = util.JSONToTable(body)
+                if not json then
+                    CloudMusic.UInfo.Details:AppendText("获取失败")
+                    return
+                end
                 if json["code"] == 200 and IsValid(CloudMusic.UInfo) then
                     Print("Fetch user details successed")
                     CloudMusic.UInfo.Details:AppendText("你订阅了"..json["djRadioCount"].."个电台\n收藏了"..json["mvCount"].."个MV\n关注了"..json["artistCount"].."个歌手\n创建了"..json["createDjRadioCount"].."个电台\n创建了"..json["createdPlaylistCount"].."个歌单\n收藏了"..json["subPlaylistCount"].."个歌单")
@@ -1036,6 +1041,8 @@ if CLIENT then
                 CloudMusic.PrevPage:SetVisible(false)
                 CloudMusic.NextPage:SetVisible(false)
                 CloudMusic.Songlist:Resolve(obj["result"]["tracks"])
+                CloudMusic.Songlist:SetVisible(true)
+                CloudMusic.Playlists:SetVisible(false)
                 Print("Fetch playlist successed")
             end, function()SetDMUISkin(Derma_Message("获取歌单失败", "错误", "好的"))end,nil,function()
                 SetTopFormsDisabled(false)
@@ -1090,6 +1097,8 @@ if CLIENT then
                 songCount = json["result"]["songCount"]
                 searchWord = CloudMusic.SearchForm.Input:GetValue()
                 CloudMusic.Songlist:Resolve(json["result"]["songs"])
+                CloudMusic.Songlist:SetVisible(true)
+                CloudMusic.Playlists:SetVisible(false)
                 Print("Search successed")
             end, function()SetDMUISkin(Derma_Message("搜索失败", "错误", "好的")) end,nil,function()
                 SetTopFormsDisabled(false)
@@ -1110,13 +1119,15 @@ if CLIENT then
             CloudMusic.NextPage:SetVisible(false)
             TokenRequest("https://cm.m4tec.org/api/recommend/songs?uid="..LocalPlayer():SteamID64(),function(body)
                 local result = util.JSONToTable(body)
-                if result["code"] ~= 200 then
+                if not result or result["code"] ~= 200 then
                     SetDMUISkin(Derma_Message("无法获取每日推荐", "错误", "好的"))
                     CloudMusic.PrevPage:SetVisible(prev)
                     CloudMusic.NextPage:SetVisible(next)
                     return
                 end
                 CloudMusic.Songlist:Resolve(result["recommend"])
+                CloudMusic.Songlist:SetVisible(true)
+                CloudMusic.Playlists:SetVisible(false)
                 Print("Fetch user recommend songs successed")
             end,function()
                 SetDMUISkin(Derma_Message("无法获取每日推荐", "错误", "好的"))
@@ -1138,7 +1149,7 @@ if CLIENT then
             CloudMusic.NextPage:SetVisible(false)
             TokenRequest("https://cm.m4tec.org/api/user/playlist?uid="..userDetail["userId"],function(body)
                 local result = util.JSONToTable(body)
-                if result["code"] ~= 200 then
+                if not result or result["code"] ~= 200 then
                     SetDMUISkin(Derma_Message("无法获取用户歌单", "错误", "好的"))
                     CloudMusic.PrevPage:SetVisible(prev)
                     CloudMusic.NextPage:SetVisible(next)
@@ -2695,12 +2706,26 @@ if CLIENT then
             for i=1,#channelPlayers do
                 local p = channelPlayers[i]
                 if p ~= nil and IsValid(p) and p ~= LocalPlayer() then
-                    if IsValid(p.MusicChannel) and p.MusicChannel:GetState() ~= GMOD_CHANNEL_STOPPED then
+                    if IsValid(p.MusicChannel) then
                         p.MusicChannel:SetPos(p:GetPos())
+                        if p:GetObserverMode() == OBS_MODE_NONE and p.MusicChannel:GetState() == GMOD_CHANNEL_STOPPED and (p.MusicChannelState == GMOD_CHANNEL_PLAYING or p.MusicChannelState == GMOD_CHANNEL_STALLED) then
+                            p.MusicChannel:Play()
+                            if p.MusicChannelForcedStop then
+                                net.Start("CloudMusicReqSync")
+                                net.SendToServer()
+                            end
+                        elseif p:GetObserverMode() ~= OBS_MODE_NONE then
+                            p.MusicChannel:Pause()
+                            p.MusicChannelForcedStop = true
+                        end
                     else
                         table.remove(channelPlayers, i)
                     end
                 elseif p ~= nil and not IsValid(p) then
+                    if IsValid(p.MusicChannel) then
+                        p.MusicChannel:Stop()
+                        p.MusicChannel = nil
+                    end
                     table.remove(channelPlayers, i)
                 end
             end
@@ -2742,6 +2767,7 @@ if CLIENT then
                 end
             end
             if valid then
+                p.MusicChannelState = state
                 if not IsValid(p.MusicChannel) then
                     Create3DChannel(id,p)
                 else
@@ -2755,7 +2781,7 @@ if CLIENT then
                         elseif state == GMOD_CHANNEL_STOPPED then
                             p.MusicChannel:Stop()
                         elseif state == GMOD_CHANNEL_PLAYING or state == GMOD_CHANNEL_STALLED then
-                            if p.MusicChannel:GetState() ~= GMOD_CHANNEL_PLAYING and p.MusicChannel:GetState() ~= GMOD_CHANNEL_STALLED then p.MusicChannel:Play() end
+                            if p.MusicChannel:GetState() ~= GMOD_CHANNEL_PLAYING and p.MusicChannel:GetState() ~= GMOD_CHANNEL_STALLED and p:GetObserverMode() == OBS_MODE_NONE then p.MusicChannel:Play() end
                             p.MusicChannel:SetVolume(volume)
                             p.MusicChannel:SetTime(time)
                         end
