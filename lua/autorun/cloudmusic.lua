@@ -4,7 +4,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200119.03"
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200120"
 if CLIENT then
     local CLOUDMUSIC_SETTING_FILE_VER = "1.2.0"
     CreateClientConVar("cloudmusic_verbose", "0", true, false, "启用网易云播放器啰嗦模式")
@@ -127,6 +127,7 @@ if CLIENT then
         end
         local function SetSettings(name,value)
             settings[name] = value
+            Print(name.." set to "..tostring(value))
             SaveSettings()
             return value
         end
@@ -446,6 +447,8 @@ if CLIENT then
             CloudMusic.Overlay:SetBackgroundColor(Color(0,0,0))
             if GetSettings("CloudMusicAnimation") then
                 CloudMusic.Overlay:SetAlpha(1)
+            else
+                CloudMusic.Overlay:SetAlpha(76.5)
             end
             function CloudMusic.Overlay:Think()
                 if GetSettings("CloudMusicAnimation") then
@@ -464,7 +467,11 @@ if CLIENT then
             CloudMusic.Overlay:SetSize(winw,winh)
         end
         local function HideOverlay()
-            CloudMusic.Overlay.IsHiding = true
+            if GetSettings("CloudMusicAnimation") then
+                CloudMusic.Overlay.IsHiding = true
+            else
+                CloudMusic.Overlay:Remove()
+            end
         end
         local function InitUserInfo()
             CloudMusic.Login:SetVisible(false)
@@ -717,15 +724,15 @@ if CLIENT then
             ShowOverlay()
             CloudMusic.LoginPrompt = vgui.Create("DPanel",CloudMusic)
             CloudMusic.LoginPrompt:SetZPos(2)
-            CloudMusic.LoginPrompt:SetPos(winw/2-300/2,(winh-30)/2-400/2+30)
-            CloudMusic.LoginPrompt:SetSize(300,400)
+            CloudMusic.LoginPrompt:SetPos(winw/2-350/2,(winh-30)/2-400/2+30)
+            CloudMusic.LoginPrompt:SetSize(350,400)
             function CloudMusic.LoginPrompt:Think()
                 if self.Mode == "Email" then
                     self.Username:SetPos(10,75)
-                    self.Username:SetSize(300-20,20)
+                    self.Username:SetSize(350-20,20)
                 elseif self.Mode == "Phone" then
                     self.Username:SetPos(35,75)
-                    self.Username:SetSize(300-45,20)
+                    self.Username:SetSize(350-45,20)
                 end
             end
             CloudMusic.LoginPrompt.Title = vgui.Create("DLabel",CloudMusic.LoginPrompt)
@@ -734,11 +741,11 @@ if CLIENT then
             CloudMusic.LoginPrompt.Title:SetColor(Color(0,0,0))
             CloudMusic.LoginPrompt.Title:SetContentAlignment(5)
             CloudMusic.LoginPrompt.Title:SetPos(0,0)
-            CloudMusic.LoginPrompt.Title:SetSize(300,50)
+            CloudMusic.LoginPrompt.Title:SetSize(350,50)
             CloudMusic.LoginPrompt.Mode = "Email"
             CloudMusic.LoginPrompt.ToggleMode = vgui.Create("DButton",CloudMusic.LoginPrompt)
             CloudMusic.LoginPrompt.ToggleMode:SetPos(10,50)
-            CloudMusic.LoginPrompt.ToggleMode:SetSize(300-20,20)
+            CloudMusic.LoginPrompt.ToggleMode:SetSize(350-20,20)
             function CloudMusic.LoginPrompt.ToggleMode:Think()
                 if CloudMusic.LoginPrompt.Mode == "Email" then
                     self:SetText("使用手机号登录")
@@ -761,7 +768,7 @@ if CLIENT then
             CloudMusic.LoginPrompt.PhoneAreaNum:SetNumeric(true)
             CloudMusic.LoginPrompt.Username = vgui.Create("DTextEntry",CloudMusic.LoginPrompt)
             CloudMusic.LoginPrompt.Username:SetPos(10,75)
-            CloudMusic.LoginPrompt.Username:SetSize(300-20,20)
+            CloudMusic.LoginPrompt.Username:SetSize(350-20,20)
             function CloudMusic.LoginPrompt.Username:Think()
                 if CloudMusic.LoginPrompt.Mode == "Email" then
                     self:SetPlaceholderText("电子邮件")
@@ -771,16 +778,35 @@ if CLIENT then
             end
             CloudMusic.LoginPrompt.Password = vgui.Create("DTextEntry",CloudMusic.LoginPrompt)
             CloudMusic.LoginPrompt.Password:SetPos(10,100)
-            CloudMusic.LoginPrompt.Password:SetSize(300-20,20)
+            CloudMusic.LoginPrompt.Password:SetSize(350-20,20)
             CloudMusic.LoginPrompt.Password:SetPlaceholderText("密码")
+            CloudMusic.LoginPrompt.Privacy = vgui.Create("DPanel", CloudMusic.LoginPrompt)
+            CloudMusic.LoginPrompt.Privacy:SetPos(10,125)
+            CloudMusic.LoginPrompt.Privacy:SetSize(350-20,20)
+            CloudMusic.LoginPrompt.Privacy.Select = vgui.Create("DCheckBox", CloudMusic.LoginPrompt.Privacy)
+            CloudMusic.LoginPrompt.Privacy.Text = vgui.Create("DLabel", CloudMusic.LoginPrompt.Privacy)
+            CloudMusic.LoginPrompt.Privacy.Text:SetPos(20,0)
+            CloudMusic.LoginPrompt.Privacy.Text:SetText("我已阅读并同意")
+            CloudMusic.LoginPrompt.Privacy.Text:SizeToContents()
+            CloudMusic.LoginPrompt.Privacy.Link = vgui.Create("DLabelURL", CloudMusic.LoginPrompt.Privacy)
+            CloudMusic.LoginPrompt.Privacy.Link:SetPos(20+CloudMusic.LoginPrompt.Privacy.Text:GetWide()+5,0)
+            CloudMusic.LoginPrompt.Privacy.Link:SetText("《CloudMusic for Garry's Mod隐私政策》")
+            CloudMusic.LoginPrompt.Privacy.Link:SizeToContents()
+            CloudMusic.LoginPrompt.Privacy.Link:SetColor(Color(6,72,255))
+            CloudMusic.LoginPrompt.Privacy.Link:SetURL("https://forum.m4tec.org/d/5-cloudmusic-for-garry-s-mod")
             CloudMusic.LoginPrompt.Login = vgui.Create("DButton",CloudMusic.LoginPrompt)
-            CloudMusic.LoginPrompt.Login:SetPos(10,125)
-            CloudMusic.LoginPrompt.Login:SetSize(300-20,20)
+            CloudMusic.LoginPrompt.Login:SetPos(10,145)
+            CloudMusic.LoginPrompt.Login:SetSize(350-20,20)
             CloudMusic.LoginPrompt.Login:SetText("登录")
             function CloudMusic.LoginPrompt.Login:DoClick()
+                if not CloudMusic.LoginPrompt.Privacy.Select:GetChecked() then
+                    SetDMUISkin(Derma_Message("使用此功能你需要阅读并同意《CloudMusic for Garry's Mod隐私政策》","警告","好的"))
+                    return
+                end
                 CloudMusic.LoginPrompt.PhoneAreaNum:SetDisabled(true)
                 CloudMusic.LoginPrompt.Username:SetDisabled(true)
                 CloudMusic.LoginPrompt.Password:SetDisabled(true)
+                CloudMusic.LoginPrompt.Privacy.Select:SetDisabled(true)
                 self:SetDisabled(true)
                 Print("Logging in...")
                 if CloudMusic.LoginPrompt.Mode == "Email" then
@@ -807,6 +833,7 @@ if CLIENT then
                         CloudMusic.LoginPrompt.PhoneAreaNum:SetDisabled(false)
                         CloudMusic.LoginPrompt.Username:SetDisabled(false)
                         CloudMusic.LoginPrompt.Password:SetDisabled(false)
+                        CloudMusic.LoginPrompt.Privacy.Select:SetDisabled(false)
                         self:SetDisabled(false)
                     end)
                 else
@@ -839,7 +866,7 @@ if CLIENT then
             end
             CloudMusic.LoginPrompt.Cancel = vgui.Create("DButton",CloudMusic.LoginPrompt)
             CloudMusic.LoginPrompt.Cancel:SetPos(10,400-30)
-            CloudMusic.LoginPrompt.Cancel:SetSize(300-20,20)
+            CloudMusic.LoginPrompt.Cancel:SetSize(350-20,20)
             CloudMusic.LoginPrompt.Cancel:SetText("取消")
             function CloudMusic.LoginPrompt.Cancel:DoClick()
                 CloudMusic.LoginPrompt:Remove()
