@@ -4,7 +4,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200121.01"
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200121.02"
 if CLIENT then
     local CLOUDMUSIC_SETTING_FILE_VER = "1.2.0"
     CreateClientConVar("cloudmusic_verbose", "0", true, false, "启用网易云播放器啰嗦模式")
@@ -71,6 +71,8 @@ if CLIENT then
             ["CloudMusicButtonTextColor"] = Color(255,255,255),
             ["CloudMusicButtonColor"] = Color(102,204,255),
             ["CloudMusicButtonHoverColor"] = Color(0,153,230),
+            ["CloudMusicButtonActivateColor"] = Color(0,86,130),
+            ["CloudMusicTextEntryColor"] = Color(0,0,0),
             ["CloudMusicPlayerFFTColor"] = Color(0,0,0),
             ["CloudMusicBarColor"] = Color(102,204,255),
             ["CloudMusicBackgroundColor"] = Color(255,255,255),
@@ -446,12 +448,34 @@ if CLIENT then
                 v.DoClick = function() end
             end
         end
+        local function tableEqual(a, b)
+            if not a or not b then return false end
+            if #a ~= #b then
+                return false
+            end
+            for i = 1, #a do
+                if a[i] ~= b[i] then
+                    return false
+                end
+            end
+            return true
+        end
         local function SetUISkin(panel)
             panel:SetSkin("CloudMusicDermaSkin")
             if panel:GetFont() == "DermaDefault" then
                 panel:SetFontInternal("CloudMusicDermaText")
                 if panel.SetFont then
                     panel:SetFont("CloudMusicDermaText")
+                end
+            end
+            if panel.GetColor and not tableEqual(panel:GetColor(),GetSettings("CloudMusicTextColor")) and panel.SetColor then
+                panel:SetColor(GetSettings("CloudMusicTextColor"))
+            end
+            if panel.GetTextColor and not tableEqual(panel:GetTextColor(),GetSettings("CloudMusicTextColor")) and panel.SetTextColor then
+                if panel:GetClassName() == "DTextEntry" then
+                    panel:SetTextColor(GetSettings("CloudMusicTextEntryColor"))
+                else
+                    panel:SetTextColor(GetSettings("CloudMusicTextColor"))
                 end
             end
             for _,v in pairs(panel:GetChildren()) do
@@ -597,7 +621,7 @@ if CLIENT then
             end
         end
         local function ButtonPaint(self,w,h)
-            draw.RoundedBox(3, 0, 0, w, h, (self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor"))
+            draw.RoundedBox(3, 0, 0, w, h, (input.IsMouseDown(MOUSE_LEFT) and self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonActivateColor") or ((self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor")))
         end
         local function SetTopFormsDisabled(disabled)
             CloudMusic.SonglistForm.Input:SetDisabled(disabled)
@@ -1045,7 +1069,7 @@ if CLIENT then
         CloudMusic.SonglistForm:SetSize(102,34)
         CloudMusic.SonglistForm:SetDrawBackground(false)
         function CloudMusic.SonglistForm:Paint(w,h)
-            draw.DrawText("歌单ID","CloudMusicText",0,0,Color(0,0,0))
+            draw.DrawText("歌单ID","CloudMusicText",0,0,GetSettings("CloudMusicTextColor"))
         end
         CloudMusic.SonglistForm.Input = vgui.Create("DTextEntry",CloudMusic.SonglistForm)
         CloudMusic.SonglistForm.Input:SetPos(0,14)
@@ -1092,7 +1116,7 @@ if CLIENT then
         CloudMusic.SearchForm:SetPos(105,5)
         CloudMusic.SearchForm:SetSize(135,34)
         function CloudMusic.SearchForm:Paint(w,h)
-            draw.DrawText("搜索歌曲", "CloudMusicText", 0, 0, Color(0,0,0))
+            draw.DrawText("搜索歌曲", "CloudMusicText", 0, 0, GetSettings("CloudMusicTextColor"))
         end
         CloudMusic.SearchForm.Input = vgui.Create("DTextEntry",CloudMusic.SearchForm)
         CloudMusic.SearchForm.Input:SetPos(0,14)
@@ -2541,12 +2565,32 @@ if CLIENT then
             for _,v in pairs(CloudMusic.Settings.Colors:GetCanvas():GetChildren()) do
                 if v:GetName() == "DLabel" then v:SetTextColor(col) end
             end
+            local iter = {}
+            function iter:Color(panel)
+                if panel.SetColor then
+                    panel:SetColor(col)
+                end
+                for _,v in pairs(panel:GetChildren()) do
+                    self:Color(v)
+                end
+            end
+            function iter:Run(panel)
+                for _,v in pairs(panel:GetChildren()) do
+                    if v:GetName() == "DListView" or v:GetName() == "DNumSlider" then
+                        self:Color(v)
+                    else
+                        self:Run(v)
+                    end
+                end
+            end
+            iter:Run(CloudMusic)
         end)
         CloudMusic.Settings.Colors:AddColorOption("背景颜色","CloudMusicBackgroundColor")
         CloudMusic.Settings.Colors:AddColorOption("标题栏文字颜色","CloudMusicTitleBarTextColor")
         CloudMusic.Settings.Colors:AddColorOption("标题栏颜色","CloudMusicTitleBarColor")
         CloudMusic.Settings.Colors:AddColorOption("按钮颜色","CloudMusicButtonColor")
         CloudMusic.Settings.Colors:AddColorOption("按钮悬浮颜色","CloudMusicButtonHoverColor")
+        CloudMusic.Settings.Colors:AddColorOption("按钮激活颜色","CloudMusicButtonActivateColor")
         CloudMusic.Settings.Colors:AddColorOption("按钮文字颜色","CloudMusicButtonTextColor",function(col)
             local iter = {}
             function iter:Run(panel)
@@ -2557,6 +2601,18 @@ if CLIENT then
                     if v:GetName() ~= "DListView" then
                         self:Run(v)
                     end
+                end
+            end
+            iter:Run(CloudMusic)
+        end)
+        CloudMusic.Settings.Colors:AddColorOption("输入框文字颜色","CloudMusicTextEntryColor",function(col)
+            local iter = {}
+            function iter:Run(panel)
+                if panel:GetName() == "DTextEntry" then
+                    panel:SetTextColor(col)
+                end
+                for _,v in pairs(panel:GetChildren()) do
+                    self:Run(v)
                 end
             end
             iter:Run(CloudMusic)
