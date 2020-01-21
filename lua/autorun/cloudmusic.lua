@@ -1515,6 +1515,7 @@ if CLIENT then
             if not IsValid(CloudMusic.CurrentChannel) then
                 CloudMusic:Play(#self.Songs)
             end
+            SetUISkin(self)
         end
         CloudMusic.Playlist.Songs = GetSettings("CloudMusicPlaylist")
         if CloudMusic.Playlist.Songs == nil then
@@ -1664,9 +1665,9 @@ if CLIENT then
             draw.RoundedBox(2.5, self:GetWide()-100, self:GetTall()-9.5, 100, 5, Color(226,226,226))
             draw.RoundedBox(2.5, self:GetWide()-100, self:GetTall()-9.5, CloudMusic.Volume*100, 5, GetSettings("CloudMusicBarColor"))
             if buffering then
-                draw.DrawText("正在尝试播放...", "CloudMusicText", CloudMusic.Player:GetWide()-160, 3, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
+                draw.DrawText("正在尝试播放...", "CloudMusicText", CloudMusic.Player:GetWide()-(self.VolumeEnchance:IsVisible() and 160 or 70), 3, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
             elseif IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_STALLED then
-                draw.DrawText("正在缓冲...", "CloudMusicText", CloudMusic.Player:GetWide()-160, 3, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
+                draw.DrawText("正在缓冲...", "CloudMusicText", CloudMusic.Player:GetWide()-(self.VolumeEnchance:IsVisible() and 160 or 70), 3, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
             end
         end
         function CloudMusic.Player:OnMousePressed(key)
