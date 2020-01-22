@@ -543,12 +543,17 @@ if CLIENT then
                 CloudMusic.Login:SetVisible(true)
             else
                 Print("User token detected, try to fetch user info")
-                TokenRequest("https://cm.m4tec.org/api/login/status?u="..LocalPlayer():SteamID64(),function(body)
+                TokenRequest("https://cm.m4tec.org/api/login/status?u="..LocalPlayer():SteamID64().."&t="..os.time(),function(body)
                     userDetail = util.JSONToTable(body)
-                    if userDetail == nil or userDetail["code"] ~= 200 then
+                    if userDetail == nil or (userDetail["code"] ~= 200 and userDetail["code"] ~= 301) then
                         notification.AddLegacy("获取网易云用户信息失败", NOTIFY_ERROR, 3)
                         CloudMusic.Login:SetVisible(true)
                         Print("Failed to fetch user info, using default layout")
+                        return
+                    elseif userDetail["code"] == 301 then
+                        CloudMusic.Login:SetVisible(true)
+                        Print("User login token is invalid, using default layout and clearing user token")
+                        SetSettings("CloudMusicUserToken","")
                         return
                     end
                     userDetail = userDetail["profile"]
@@ -2393,7 +2398,7 @@ if CLIENT then
         DisableListHeader(CloudMusic.Settings.Playerlist)
         --[[function CloudMusic.Settings.Playerlist:DoDoubleClick()
             if self:GetSelectedLine() == nil then return end
-            local line = self:GetSelectedLine()
+            local _,line = self:GetSelectedLine()
             local p = player.GetBySteamID64(line:GetColumnText(2))
             net.Start("CloudMusicReqPlayerStatus")
             net.WriteEntity(p)
@@ -2405,7 +2410,7 @@ if CLIENT then
         function CloudMusic.Settings.Playerlist:ShowMenu()
             local menu = DermaMenu(self)
             menu:AddOption("加入/移出黑名单",function()
-                local selected = self:GetSelectedLine()
+                local _,selected = self:GetSelectedLine()
                 if selected.Blacklisted then
                     for i=1,#self.BlacklistUsers do
                         if self.BlacklistUsers[i].ID == selected:GetColumnText(2) then
@@ -2933,7 +2938,6 @@ if SERVER then
         end
         Print("Serverside CloudMusic initialized!")
     end
-    hook.Add("InitPostEntity", "CloudMusic_Init", HookKey)
     hook.Add("PlayerButtonDown", "CloudMusic_KeyPress", function(ply,btn)
         if btn == KEY_F9 then
             net.Start("ToggleCloudMusic")
