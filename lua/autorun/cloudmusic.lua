@@ -1,10 +1,12 @@
+CM_STATUS_PLAYING = 0
+CM_STATUS_PAUSE = 1
 local function Print(msg,color)
     if GetConVar("cloudmusic_verbose") ~= nil and GetConVar("cloudmusic_verbose"):GetInt() ~= 1 then return end
     local DEF_COLOR = CLIENT and Color( 255, 222, 102 ) or Color( 137, 222, 255 )
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200123"
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200123.01"
 if CLIENT then
     local CLOUDMUSIC_SETTING_FILE_VER = "1.2.0"
     CreateClientConVar("cloudmusic_verbose", "0", true, false, "启用网易云播放器啰嗦模式")
@@ -2304,14 +2306,14 @@ if CLIENT then
         function CloudMusic.Settings.Bypass3D:OnChange(val)
             SetSettings("CloudMusicBypass3D", val)
             if val then
-                local players = player.GetAll()
-                for i=1,#players do
-                    local p = players[i]
-                    if IsValid(p.MusicChannel) then
+                for i=1,#channelPlayers do
+                    local p = channelPlayers[i]
+                    if IsValid(p) and IsValid(p.MusicChannel) then
                         p.MusicChannel:Stop()
                         p.MusicChannel = nil
                     end
                 end
+                channelPlayers = {}
             else
                 net.Start("CloudMusicReqSync")
                 net.SendToServer()
@@ -2398,7 +2400,7 @@ if CLIENT then
         DisableListHeader(CloudMusic.Settings.Playerlist)
         --[[function CloudMusic.Settings.Playerlist:DoDoubleClick()
             if self:GetSelectedLine() == nil then return end
-            local _,line = self:GetSelectedLine()
+            local line = self:GetSelected()[1]
             local p = player.GetBySteamID64(line:GetColumnText(2))
             net.Start("CloudMusicReqPlayerStatus")
             net.WriteEntity(p)
@@ -2410,16 +2412,16 @@ if CLIENT then
         function CloudMusic.Settings.Playerlist:ShowMenu()
             local menu = DermaMenu(self)
             menu:AddOption("加入/移出黑名单",function()
-                local _,selected = self:GetSelectedLine()
+                local selected = self:GetSelected()[1]
                 if selected.Blacklisted then
                     for i=1,#self.BlacklistUsers do
                         if self.BlacklistUsers[i].ID == selected:GetColumnText(2) then
                             table.remove(self.BlacklistUsers,i)
-                            net.Start("CloudMusicReqSync")
-                            net.SendToServer()
                             break
                         end
                     end
+                    net.Start("CloudMusicReqSync")
+                    net.SendToServer()
                 else
                     for _,v in pairs(player.GetAll()) do
                         if IsValid(v.MusicChannel) and v:SteamID64() == selected:GetColumnText(2) then
@@ -2433,7 +2435,7 @@ if CLIENT then
                         ID = selected:GetColumnText(2)
                     })
                 end
-                self:Sync()
+                self:SyncBlacklist()
             end):SetIcon("icon16/user_delete.png")
             menu:AddOption("复制玩家名称",function()
                 SetClipboardText(self.BlacklistUsers[self:GetSelectedLine()].Name)
@@ -2796,6 +2798,10 @@ if CLIENT then
         CloudMusic:SetAlpha(0)
         CloudMusic:SetVisible(false)
         InitUserInfo()
+        hook.Add("PlayerSpawn","CloudMusic_PlayerSpawn",function()
+            CloudMusic.Settings.Playerlist:SyncBlacklist()
+            CloudMusic.Playlist:Sync()
+        end)
         hook.Add("PreCleanupMap","CloudMusic_PreCleanup",function()
             CloudMusic.Util:BeforeChannelForceStop()
         end)
@@ -2901,7 +2907,23 @@ if CLIENT then
                 p.MusicChannel = nil
             end
         end)
-        net.Receive("CloudMusicReqSync", SendSyncData)
+        --[[net.Receive("CloudMusicReqSync", SendSyncData)
+        net.Receive("CloudMusicReqStatus", function()
+            local t = net.ReadEntity()
+        end)
+        net.Receive("CloudMusicStatus",function()
+            local from = net.ReadEntity()
+            local status = net.ReadInt(32)
+            local time = net.ReadFloat()
+            local length = net.ReadFloat()
+            local volume = net.ReadFloat()
+            if not IsValid(from) then return end
+            print(from:Nick().." status")
+            print("S:"..status)
+            print("T:"..time)
+            print("L:"..length)
+            print("V:"..volume)
+        end)]]
         hook.Run("CloudMusicInit")
         Print("Clientside CloudMusic initialized!")
         CloudMusicInitOnce = true
@@ -2927,11 +2949,14 @@ if SERVER then
     print("         By  Texas         \n")
     print("===========================")
     Print("Initializing serverside CloudMusic "..CLOUDMUSIC_VER)
-    local function HookKey()
+    local function Init()
         util.AddNetworkString("ToggleCloudMusic")
         util.AddNetworkString("CloudMusicKeyDown")
         util.AddNetworkString("CloudMusic3DSync")
         util.AddNetworkString("CloudMusicReqSync")
+        --[[util.AddNetworkString("CloudMusicStatus")
+        util.AddNetworkString("CloudMusicReqStatus")
+        util.AddNetworkString("CloudMusicReqPlayerStatus")]]
         if not CloudMusicRegisteredULib and ULib ~= nil then
             CloudMusicRegisteredULib = true
             ULib.ucl.registerAccess("cloudmusic3d","user","允许玩家使用3D外放功能","网易云音乐")
@@ -2958,7 +2983,7 @@ if SERVER then
             return ""
         end
     end)
-    net.Receive("CloudMusicReqSync", function()
+    --[[net.Receive("CloudMusicReqSync", function()
         net.Start("CloudMusicReqSync")
         net.Broadcast()
     end)
@@ -2979,14 +3004,27 @@ if SERVER then
         net.WriteFloat(time)
         net.Broadcast()
     end)
-    --[[net.Receive("CloudMusicReqPlayerStatus", function(len,ply)
+    net.Receive("CloudMusicReqPlayerStatus", function(len,ply)
         local p = net.ReadEntity()
         if not IsValid(p) then return end
         net.Start("CloudMusicReqStatus")
+        net.WriteEntity(ply)
         net.Send(p)
     end)
-    net.Receive("CloudMusicStatus", function()
-        
+    net.Receive("CloudMusicStatus", function(len,ply)
+        local t = net.ReadEntity()
+        local status = net.ReadInt(32)
+        local time = net.ReadFloat()
+        local length = net.ReadFloat()
+        local volume = net.ReadFloat()
+        if not IsValid(t) then return end
+        net.Start("CloudMusicStatus")
+        net.WriteEntity(ply)
+        net.WriteInt(status, 32)
+        net.WriteFloat(time)
+        net.WriteFloat(length)
+        net.WriteFloat(volume)
+        net.Send(t)
     end)]]
     if file.Exists("materials/gwenskin/windows10.png", "GAME") then
         resource.AddSingleFile("materials/gwenskin/windows10.png")
@@ -2995,5 +3033,5 @@ if SERVER then
         resource.AddWorkshop(1800442580)
         Print("Derma skin resource doesn't exists in server, using Steam Workshop")
     end
-    HookKey()
+    Init()
 end
