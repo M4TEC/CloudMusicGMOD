@@ -6,7 +6,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200123.01"
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200125"
 if CLIENT then
     local CLOUDMUSIC_SETTING_FILE_VER = "1.2.0"
     CreateClientConVar("cloudmusic_verbose", "0", true, false, "启用网易云播放器啰嗦模式")
