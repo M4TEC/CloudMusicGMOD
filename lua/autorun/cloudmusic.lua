@@ -439,9 +439,8 @@ if CLIENT then
                             net.Start("CloudMusicReqSync")
                             net.SendToServer()
                         end
+                        ply.ChannelCreating = false
                     end)
-                end,function()
-                    ply.ChannelCreating = false
                 end)
             end
         end
@@ -2877,7 +2876,7 @@ if CLIENT then
             if p == LocalPlayer() or not IsValid(p) then return end
             for _,v in pairs(CloudMusic.Settings.Playerlist.BlacklistUsers) do
                 if v.ID == p:SteamID64() then
-                    Print("3D Play of "..v:Nick().." has been blocked")
+                    Print("3D Play of "..p:Nick().." has been blocked")
                     return
                 end
             end
@@ -2939,6 +2938,7 @@ if CLIENT then
     end, nil, "重新初始化网易云播放器")
     CreateClientConVar("cloudmusic_ui_debug", "0", false, false, "启用网易云播放器界面调试模式")
     if CloudMusicInitOnce then
+        Print("WARN: Re-initialize may cause some problems, sometimes type 'stopsound' command in console may solve them.")
         Print("Old CloudMusic instance detected, doing re-initialize immediately")
         Init()
     end
