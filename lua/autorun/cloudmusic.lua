@@ -6,7 +6,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200125.01"
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200125.02"
 if CLIENT then
     local CLOUDMUSIC_SETTING_FILE_VER = "1.2.0"
     CreateClientConVar("cloudmusic_verbose", "0", true, false, "启用网易云播放器啰嗦模式")
@@ -304,6 +304,7 @@ if CLIENT then
             hook.Run("CloudMusicSongEnded")
         end
         local function SongPlayError()
+            if CloudMusic.CurrentPlaying == nil then return end
             notification.AddLegacy("无法播放 "..CloudMusic.CurrentPlaying.Name, NOTIFY_ERROR, 3)
             if errorCount == 5 then
                 notification.AddLegacy("由于已经连续5次无法播放，将停止尝试", NOTIFY_GENERIC, 3)
@@ -613,8 +614,9 @@ if CLIENT then
                                 <div class="user-info">
                                     <span class="welcome">欢迎</span>
                                     <span class="username">]]..userDetail["nickname"]..[[</span>
-                                </div>
-                                <img src="]]..userDetail["avatarUrl"]..[["
+                                </div>]]..(type(userDetail["avatarUrl"]) == "string" and [[
+                                <img src="]]..userDetail["avatarUrl"]..[["/>
+                                ]] or [[]])..[[
                             </body>
                         </html>
                     ]])
@@ -972,7 +974,7 @@ if CLIENT then
             CloudMusic.UInfo.Avatar:SetHTML([[
                 <html>
                     <body style="overflow:hidden;margin:0;">
-                        <img style="width:64px;height:64px;" src="]]..userDetail["avatarUrl"]..[[" title="]]..userDetail["nickname"]..[["/>
+                        <img style="width:64px;height:64px;" src="]]..(type(userDetail["avatarUrl"]) == "string" and userDetail["avatarUrl"] or "")..[[" title="]]..userDetail["nickname"]..[["/>
                     </body>
                 </html>
             ]])
@@ -1600,6 +1602,7 @@ if CLIENT then
                                 setSongname("]]..self.CurrentPlaying.Name:JavascriptSafe()..[[");
                                 setArtist("]]..self.CurrentPlaying.Artist:JavascriptSafe()..[[");
                             ]])
+                            errorCount = 0
                             hook.Run("CloudMusicMusicPlaying",self.CurrentPlaying)
                             Print("Start to play "..self.CurrentPlaying.Name.." - "..self.CurrentPlaying.Artist)
                         end
