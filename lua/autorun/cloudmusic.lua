@@ -509,7 +509,7 @@ if CLIENT then
         function vgui.Create(c,p,n,...)
             local r = vgui.__oldCreate(c,p,n,...)
             function r:SetI18N(strname,type)
-                if self.I18Name == strname and self.I18NType == type then return end
+                if self.I18Name == strname and self.I18NType == (type or I18N_TEXT) then return end
                 if not table.HasValue(I18N_LIST,self) then
                     table.insert(I18N_LIST,self)
                 end
