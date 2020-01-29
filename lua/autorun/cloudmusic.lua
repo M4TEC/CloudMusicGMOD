@@ -6,7 +6,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200129.01"
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200130"
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -347,6 +347,7 @@ if CLIENT then
     Print("Initializing CloudMusic "..CLOUDMUSIC_VER)
     cvars.RemoveChangeCallback("gmod_language", "CloudMusicLanguageDetect")
     local function Init()
+        I18N_LIST = {}
         if CloudMusic and CloudMusic.Remove then
             local players = player.GetAll()
             for i=1,#players do
@@ -485,9 +486,11 @@ if CLIENT then
         local I18N_VALUE = 2
         local I18N_COLUMN = 3
         local function LanguageUpdate()
+            print("\n\n===================START UPDATE LANGUAGE=====================")
             local lang = GetConVar("gmod_language"):GetString()
             for _,c in ipairs(I18N_LIST) do
                 if IsValid(c) then
+                    print("Updating",c,(c.GetText == nil and nil or c:GetText()),c.I18Name)
                     local params = {}
                     if type(c.I18NParams) == "table" then
                         for k,v in pairs(c.I18NParams) do
@@ -2235,6 +2238,7 @@ if CLIENT then
             end
         end
         CloudMusic.Player.PlayPause = vgui.Create("DButton",CloudMusic.Player)
+        CloudMusic.Player.PlayPause:SetI18N("play")
         function CloudMusic.Player.PlayPause:LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,18)
