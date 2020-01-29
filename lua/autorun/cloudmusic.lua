@@ -486,11 +486,9 @@ if CLIENT then
         local I18N_VALUE = 2
         local I18N_COLUMN = 3
         local function LanguageUpdate()
-            print("\n\n===================START UPDATE LANGUAGE=====================")
             local lang = GetConVar("gmod_language"):GetString()
             for _,c in ipairs(I18N_LIST) do
                 if IsValid(c) then
-                    print("Updating",c,(c.GetText == nil and nil or c:GetText()),c.I18Name)
                     local params = {}
                     if type(c.I18NParams) == "table" then
                         for k,v in pairs(c.I18NParams) do
