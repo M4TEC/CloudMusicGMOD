@@ -6,7 +6,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200129"
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200129.01"
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
