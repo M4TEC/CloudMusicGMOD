@@ -6,7 +6,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200130.01"
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200130.02"
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -929,7 +929,7 @@ if CLIENT then
         end
         local function GetSongURL(id,callback,finally)
             if GetSettings("CloudMusicUseServer") then
-                TokenRequest("https://cm.m4tec.org/api/song/url?id="..id.."&t="..os.time(),function(body)
+                TokenRequest("https://cm.m4tec.org/api/song/url?id="..id,function(body)
                     local result = util.JSONToTable(body)
                     if not result or not result["data"] or not result["data"][1] or not result["data"][1]["url"] then
                         if type(callback) == "function" then
@@ -1039,11 +1039,13 @@ if CLIENT then
                 CloudMusic.Overlay:Remove()
             end
             CloudMusic.Overlay = vgui.Create("DPanel",CloudMusic)
-            CloudMusic.Overlay:SetBackgroundColor(Color(0,0,0))
             if GetSettings("CloudMusicAnimation") then
                 CloudMusic.Overlay:SetAlpha(1)
             else
                 CloudMusic.Overlay:SetAlpha(76.5)
+            end
+            function CloudMusic.Overlay:Paint(w,h)
+                draw.RoundedBox(8, 0, 0, w, h, Color(0,0,0,self:GetAlpha()))
             end
             function CloudMusic.Overlay:Think()
                 if GetSettings("CloudMusicAnimation") then
@@ -2438,6 +2440,7 @@ if CLIENT then
             end
         end
         CloudMusic.Player.Mode = vgui.Create("DButton",CloudMusic.Player)
+        CloudMusic.Player.Mode:SetI18N("list_loop")
         function CloudMusic.Player.Mode:LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,18)
