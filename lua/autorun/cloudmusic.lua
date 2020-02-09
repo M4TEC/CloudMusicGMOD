@@ -1,3 +1,4 @@
+CM_STATUS_NON_INFO = -1
 CM_STATUS_PLAYING = 0
 CM_STATUS_PAUSE = 1
 local function Print(msg,color)
@@ -6,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200130.02"
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200207"
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -30,6 +31,8 @@ if CLIENT then
             ["welcome"] = "欢迎",
             ["profile"] = "个人信息",
             ["logout"] = "注销",
+            ["playing"] = "正在播放",
+            ["paused"] = "已暂停",
             ["blocked"] = "已屏蔽",
             ["unblocked"] = "未屏蔽",
             ["top_left"] = "左上角",
@@ -152,6 +155,7 @@ if CLIENT then
             ["hud_fft_color"] = "HUD频谱颜色",
             ["contact"] = "联系Texas",
             ["donate"] = "赞助作者",
+            ["no_info"] = "暂无信息，对方可能未播放音乐或未开放信息",
             ["lyricfailed"] = "无法获取 %name% 的歌词",
             ["lyricfailed_detail"] = "无法获取 %name% 的歌词（%msg%）",
             ["nolyric"] = "歌曲 %name% 暂无歌词",
@@ -881,6 +885,17 @@ if CLIENT then
             net.WriteFloat(IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetTime() or 0)
             net.SendToServer()
         end
+        local fu
+        local function SendInfoData()
+            local state = IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetState() or -1
+            net.Start("CloudMusicInfo")
+            net.WriteInt((GetSettings("CloudMusicPublicInfo") and IsValid(CloudMusic.CurrentChannel)) and ((state == GMOD_CHANNEL_PLAYING or GMOD_CHANNEL_STALLED) and CM_STATUS_PLAYING or CM_STATUS_PAUSED) or CM_STATUS_NON_INFO,32)
+            net.WriteString(CloudMusic.CurrentPlaying == nil and "" or CloudMusic.CurrentPlaying.Name)
+            net.WriteString(CloudMusic.CurrentPlaying == nil and "" or CloudMusic.CurrentPlaying.Artist)
+            net.WriteString(CloudMusic.CurrentPlaying == nil and "" or CloudMusic.CurrentPlaying.Album)
+            net.WriteString(CloudMusic.CurrentPlaying == nil and "" or CloudMusic.CurrentPlaying.Thumbnail)
+            net.SendToServer()
+        end
         local function TokenRequest(url,callback,fail,finally,method,data)
             if method == nil then method = "GET" end
             local headers = GetSettings("CloudMusicUserToken") == "" and {} or {
@@ -1419,9 +1434,9 @@ if CLIENT then
             end
             CloudMusic.LoginPrompt.Privacy.Text:SetI18N("read_agreed")
             CloudMusic.LoginPrompt.Privacy.Link = vgui.Create("DLabelURL", CloudMusic.LoginPrompt.Privacy)
-            CloudMusic.LoginPrompt.Privacy.Link:SetPos(20+CloudMusic.LoginPrompt.Privacy.Text:GetWide()+5,0)
             function CloudMusic.LoginPrompt.Privacy.Link:LangUpdate()
                 self:SizeToContents()
+                self:SetPos(20+CloudMusic.LoginPrompt.Privacy.Text:GetWide(),0)
             end
             CloudMusic.LoginPrompt.Privacy.Link:SetI18N("privacy_policy")
             CloudMusic.LoginPrompt.Privacy.Link:SizeToContents()
@@ -2197,6 +2212,7 @@ if CLIENT then
                 self.CurrentChannel:Stop()
                 self.CurrentChannel = nil
             end
+            SendInfoData()
             local cId = self.CurrentPlaying.ID
             Print("Try to play "..self.CurrentPlaying.Name.." - "..self.CurrentPlaying.Artist)
             notification.AddProgress("CloudMusicBuffering", GetText("try_play",{"name",self.CurrentPlaying.Name},{"artists",self.CurrentPlaying.Artist}))
@@ -2224,6 +2240,7 @@ if CLIENT then
                         SongPlayError()
                     end
                     SendSyncData()
+                    SendInfoData()
                 end)
             end,function()
                 buffering = false
@@ -2408,6 +2425,7 @@ if CLIENT then
             elseif CloudMusic.CurrentChannel:GetState() ~= GMOD_CHANNEL_PLAYING then
                 CloudMusic.CurrentChannel:Play()
             end
+            SendInfoData()
         end
         CloudMusic.Player.PlayPause.Paint = ButtonPaint
         function CloudMusic.Player.PlayPause:Think()
@@ -3053,14 +3071,86 @@ if CLIENT then
         CloudMusic.Settings.Playerlist:SetMultiSelect(false)
         CloudMusic.Settings.Playerlist:SetSortable(false)
         DisableListHeader(CloudMusic.Settings.Playerlist)
-        --[[function CloudMusic.Settings.Playerlist:DoDoubleClick()
+        function CloudMusic.Settings.Playerlist:DoDoubleClick()
             if self:GetSelectedLine() == nil then return end
             local line = self:GetSelected()[1]
             local p = player.GetBySteamID64(line:GetColumnText(2))
-            net.Start("CloudMusicReqPlayerStatus")
-            net.WriteEntity(p)
-            net.SendToServer()
-        end]]
+            local w = vgui.Create("DPanel",CloudMusic)
+            w:SetZPos(2)
+            w:SetSize(winw*0.8,(winh-30)*0.9)
+            w:SetPos(winw/2-(winw*0.8/2),winh/2-((winh-30)*0.9)/2)
+            w.Avatar = vgui.Create("AvatarImage",w)
+            w.Avatar:SetPos(5,5)
+            w.Avatar:SetSize(64,64)
+            w.Avatar:SetPlayer(p,64)
+            w.Name = vgui.Create("DLabel",w)
+            w.Name:SetPos(70,5)
+            w.Name:SetFont("CloudMusicTitle")
+            w.Name:SetText(p:Nick())
+            w.Name:SizeToContents()
+            w.Status = vgui.Create("DLabel",w)
+            w.Status:SetPos(70,5+select(2,w.Name:GetSize()))
+            w.Status:SetFont("CloudMusicText")
+            function w.Status:LangUpdate()
+                self:SizeToContents()
+            end
+            w.Status:SetI18N("wait")
+            w.Thumbnail = vgui.Create("DHTML",w)
+            w.Thumbnail:SetPos(5,74)
+            w.Thumbnail:SetSize(64,64)
+            w.Thumbnail:SetVisible(false)
+            w.SongName = vgui.Create("DLabel",w)
+            w.SongName:SetPos(70,74)
+            w.SongName:SetFont("CloudMusicTitle")
+            w.SongName:SetVisible(false)
+            w.Details = vgui.Create("DLabel",w)
+            w.Details:SetFont("CloudMusicText")
+            w.Details:SetVisible(false)
+            w.Close = vgui.Create("DButton",w)
+            w.Close:SetPos(5,select(2,w:GetSize())-25)
+            w.Close:SetSize(w:GetSize()-10,20)
+            w.Close:SetI18N("close")
+            function w.Close:DoClick()
+                HideOverlay()
+                w:Remove()
+            end
+            function w:UpdateInfo()
+                local stat = "no_info"
+                if p.CM_MusicInfo["Status"] == CM_STATUS_PLAYING then
+                    stat = "playing"
+                elseif p.CM_MusicInfo["Status"] == CM_STATUS_PAUSE then
+                    stat = "paused"
+                end
+                self.Status:SetI18N(stat)
+                if p.CM_MusicInfo["Status"] ~= CM_STATUS_NON_INFO then
+                    self.Thumbnail:SetHTML([[
+                        <body style="margin:0;">
+                            <img src="]]..p.CM_MusicInfo["Thumbnail"]..[[" style="width:100%;height:100%;"/>
+                            <script>
+                                window.onmousedown = function() {return false;}
+                                window.onkeydown = function() {return false;}
+                            </script>
+                        </body>
+                    ]])
+                    self.SongName:SetText(p.CM_MusicInfo["Name"])
+                    self.SongName:SizeToContents()
+                    self.Details:SetPos(70,74+select(2,self.SongName:GetSize()))
+                    self.Details:SetText(p.CM_MusicInfo["Artist"].." · "..p.CM_MusicInfo["Album"])
+                    self.Details:SizeToContents()
+                    self.Thumbnail:SetVisible(true)
+                    self.SongName:SetVisible(true)
+                    self.Details:SetVisible(true)
+                else
+                    self.Thumbnail:SetVisible(false)
+                    self.SongName:SetVisible(false)
+                    self.Details:SetVisible(false)
+                end
+            end
+            w:UpdateInfo()
+            CloudMusic.PlayerInfo = w
+            SetUISkin(w)
+            ShowOverlay()
+        end
         function CloudMusic.Settings.Playerlist:OnRowRightClick(lineID, line)
             self:ShowMenu()
         end
@@ -3579,23 +3669,29 @@ if CLIENT then
                 p.MusicChannel = nil
             end
         end)
-        --[[net.Receive("CloudMusicReqSync", SendSyncData)
-        net.Receive("CloudMusicReqStatus", function()
-            local t = net.ReadEntity()
+        net.Receive("CloudMusicInitPlayer", function()
+            local p = net.ReadEntity()
+            if p == LocalPlayer() or not IsValid(p) then return end
+            p.CM_MusicInfo = {
+                ["Status"] = CM_STATUS_NON_INFO,
+                ["Name"] = nil,
+                ["Artists"] = nil,
+                ["Album"] = nil,
+                ["Thumbnail"] = nil,
+            }
         end)
-        net.Receive("CloudMusicStatus",function()
-            local from = net.ReadEntity()
-            local status = net.ReadInt(32)
-            local time = net.ReadFloat()
-            local length = net.ReadFloat()
-            local volume = net.ReadFloat()
-            if not IsValid(from) then return end
-            print(from:Nick().." status")
-            print("S:"..status)
-            print("T:"..time)
-            print("L:"..length)
-            print("V:"..volume)
-        end)]]
+        net.Receive("CloudMusicInfo", function()
+            local p = net.ReadEntity()
+            local info = net.ReadTable()
+            if not IsValid(p) then return end
+            p.CM_MusicInfo = info
+            if IsValid(CloudMusic.PlayerInfo) then CloudMusic.PlayerInfo:UpdateInfo() end
+        end)
+        net.Receive("CloudMusicReqInfo", function()
+            SendInfoData()
+        end)
+        net.Start("CloudMusicReqInfo")
+        net.SendToServer()
         hook.Run("CloudMusicInit")
         Print("Clientside CloudMusic initialized!")
         CloudMusicInitOnce = true
@@ -3627,17 +3723,23 @@ if SERVER then
         util.AddNetworkString("CloudMusicKeyDown")
         util.AddNetworkString("CloudMusic3DSync")
         util.AddNetworkString("CloudMusicReqSync")
-        --[[util.AddNetworkString("CloudMusicStatus")
-        util.AddNetworkString("CloudMusicReqStatus")
-        util.AddNetworkString("CloudMusicReqPlayerStatus")]]
+        util.AddNetworkString("CloudMusicInitPlayer")
+        util.AddNetworkString("CloudMusicInfo")
+        util.AddNetworkString("CloudMusicReqInfo")
         if not CloudMusicRegisteredULib and ULib ~= nil then
             CloudMusicRegisteredULib = true
             ULib.ucl.registerAccess("cloudmusic3d","user","允许玩家使用3D外放功能","网易云音乐")
         end
         Print("Serverside CloudMusic initialized!")
     end
+    local lastReqInfoTime = 0
     hook.Add("PlayerSpawn", "CloudMusic_PlayerSpawn", function()
         net.Start("CloudMusicReqSync")
+        net.Broadcast()
+    end)
+    hook.Add("PlayerInitialSpawn", "CloudMusic_PlayerInitialSpawn", function(ply)
+        net.Start("CloudMusicInitPlayer")
+        net.WriteEntity(ply)
         net.Broadcast()
     end)
     hook.Add("PlayerSay","CloudMusic_PlayerSay",function(ply,text,team,dead)
@@ -3668,28 +3770,36 @@ if SERVER then
         net.WriteFloat(time)
         net.Broadcast()
     end)
-    --[[net.Receive("CloudMusicReqPlayerStatus", function(len,ply)
-        local p = net.ReadEntity()
-        if not IsValid(p) then return end
-        net.Start("CloudMusicReqStatus")
+    net.Receive("CloudMusicInfo", function(_,ply)
+        local data = {
+            ["Status"] = CM_STATUS_NON_INFO,
+            ["Name"] = nil,
+            ["Artists"] = nil,
+            ["Album"] = nil,
+            ["Thumbnail"] = nil,
+        }
+        data["Status"] = net.ReadInt(32)
+        local name = net.ReadString()
+        local artists = net.ReadString()
+        local album = net.ReadString()
+        local thumbnail = net.ReadString()
+        if data["Status"] ~= CM_STATUS_NON_INFO then
+            data["Name"] = name
+            data["Artists"] = artists
+            data["Album"] = album
+            data["Thumbnail"] = thumbnail
+        end
+        net.Start("CloudMusicInfo")
         net.WriteEntity(ply)
-        net.Send(p)
+        net.WriteTable(data)
+        net.Broadcast()
     end)
-    net.Receive("CloudMusicStatus", function(len,ply)
-        local t = net.ReadEntity()
-        local status = net.ReadInt(32)
-        local time = net.ReadFloat()
-        local length = net.ReadFloat()
-        local volume = net.ReadFloat()
-        if not IsValid(t) then return end
-        net.Start("CloudMusicStatus")
-        net.WriteEntity(ply)
-        net.WriteInt(status, 32)
-        net.WriteFloat(time)
-        net.WriteFloat(length)
-        net.WriteFloat(volume)
-        net.Send(t)
-    end)]]
+    net.Receive("CloudMusicReqInfo", function()
+        if os.time() - lastReqInfoTime <= 10 then return end
+        net.Start("CloudMusicReqInfo")
+        net.Broadcast()
+        lastReqInfoTime = os.time()
+    end)
     if file.Exists("materials/gwenskin/windows10.png", "GAME") then
         resource.AddSingleFile("materials/gwenskin/windows10.png")
         Print("Derma skin resource detected in server, using server skin file")
