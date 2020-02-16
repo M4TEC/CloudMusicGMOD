@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200207"
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200216" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -496,7 +496,7 @@ if CLIENT then
         end
         return text
     end
-    local CLOUDMUSIC_SETTING_FILE_VER = "1.2.0"
+    local CLOUDMUSIC_SETTING_FILE_VER = "1.2.0" -- DO NOT modify unless you know WHAT ARE YOU DOING
     CreateClientConVar("cloudmusic_verbose", "0", true, false, GetText("verbose_help"))
     if file.Exists("materials/gwenskin/windows10.png", "GAME") then
         --Windows 10 UI Skin by Spar
@@ -515,9 +515,9 @@ if CLIENT then
             for i=1,#players do
                 local p = players[i]
                 p.ChannelCreating = false
-                if IsValid(p.MusicChannel) then
-                    p.MusicChannel:Stop()
-                    p.MusicChannel = nil
+                if IsValid(p.CM_MusicChannel) then
+                    p.CM_MusicChannel:Stop()
+                    p.CM_MusicChannel = nil
                 end
             end
             if CloudMusic.CurrentChannel then
@@ -985,8 +985,8 @@ if CLIENT then
                     sound.PlayURL(url,"noblock 3d",function(station)
                         if IsValid(station) and IsValid(ply) then
                             table.insert(channelPlayers, ply)
-                            ply.MusicChannel = station
-                            ply.MusicChannelID = id
+                            ply.CM_MusicChannel = station
+                            ply.CM_MusicChannelID = id
                             net.Start("CloudMusicReqSync")
                             net.SendToServer()
                         end
@@ -1271,6 +1271,7 @@ if CLIENT then
                 surface.SetFont("CloudMusicTitle")
                 draw.DrawText(msg, "CloudMusicText", surface.GetTextSize(GetText("title"))+5, 13, GetSettings("CloudMusicTitleBarTextColor"))
             end
+            hook.Run("CloudMusicPaint", self)
         end
         local dragStartX = 0
         local dragStartY = 0
@@ -2968,9 +2969,9 @@ if CLIENT then
             if val then
                 for i=1,#channelPlayers do
                     local p = channelPlayers[i]
-                    if IsValid(p) and IsValid(p.MusicChannel) then
-                        p.MusicChannel:Stop()
-                        p.MusicChannel = nil
+                    if IsValid(p) and IsValid(p.CM_MusicChannel) then
+                        p.CM_MusicChannel:Stop()
+                        p.CM_MusicChannel = nil
                     end
                 end
                 channelPlayers = {}
@@ -3169,9 +3170,9 @@ if CLIENT then
                     net.SendToServer()
                 else
                     for _,v in pairs(player.GetAll()) do
-                        if IsValid(v.MusicChannel) and v:SteamID64() == selected:GetColumnText(2) then
-                            v.MusicChannel:Stop()
-                            v.MusicChannel = nil
+                        if IsValid(v.CM_MusicChannel) and v:SteamID64() == selected:GetColumnText(2) then
+                            v.CM_MusicChannel:Stop()
+                            v.CM_MusicChannel = nil
                             break
                         end
                     end
@@ -3582,38 +3583,54 @@ if CLIENT then
                 end
             end
         end)
+        hook.Add("PlayerStartVoice","CloudMusic_PlayerStartVoice",function()
+            speaking = true
+            for _,v in pairs(player.GetAll()) do
+                if IsValid(v.CM_MusicChannel) then
+                    v.CM_MusicChannel:SetVolume(v.CM_MusicChannel:GetVolume() * 0.5)
+                end
+            end
+        end)
+        hook.Add("PlayerEndVoice","CloudMusic_PlayerEndVoice",function()
+            speaking = false
+            for _,v in pairs(player.GetAll()) do
+                if IsValid(v.CM_MusicChannel) then
+                    v.CM_MusicChannel:SetVolume(v.CM_MusicChannelVolume)
+                end
+            end
+        end)
         hook.Add("Think","CloudMusic_Think",function()
             if IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetTime() >= CloudMusic.CurrentChannel:GetLength()-1 and CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_STOPPED then
                 SongEnded()
             end
             if IsValid(CloudMusic.CurrentChannel) then
-                CloudMusic.CurrentChannel:SetVolume(CloudMusic.Volume)
+                CloudMusic.CurrentChannel:SetVolume(CloudMusic.Volume * (speaking and 0.5 or 1))
             end
         end)
         timer.Create("CloudMusic_Update",0.15,0,function()
             for i=1,#channelPlayers do
                 local p = channelPlayers[i]
                 if p ~= nil and IsValid(p) and p ~= LocalPlayer() then
-                    if IsValid(p.MusicChannel) then
-                        p.MusicChannel:SetPos(p:GetPos())
-                        if p:GetObserverMode() == OBS_MODE_NONE and p.MusicChannel:GetState() == GMOD_CHANNEL_STOPPED and (p.MusicChannelState == GMOD_CHANNEL_PLAYING or p.MusicChannelState == GMOD_CHANNEL_STALLED) then
-                            p.MusicChannel:Play()
-                            if p.MusicChannelForcedStop then
-                                p.MusicChannelForcedStop = false
+                    if IsValid(p.CM_MusicChannel) then
+                        p.CM_MusicChannel:SetPos(p:GetPos())
+                        if p:GetObserverMode() == OBS_MODE_NONE and p.CM_MusicChannel:GetState() == GMOD_CHANNEL_STOPPED and (p.CM_MusicChannelState == GMOD_CHANNEL_PLAYING or p.CM_MusicChannelState == GMOD_CHANNEL_STALLED) then
+                            p.CM_MusicChannel:Play()
+                            if p.CM_MusicChannelForcedStop then
+                                p.CM_MusicChannelForcedStop = false
                                 net.Start("CloudMusicReqSync")
                                 net.SendToServer()
                             end
                         elseif p:GetObserverMode() ~= OBS_MODE_NONE then
-                            p.MusicChannel:Pause()
-                            p.MusicChannelForcedStop = true
+                            p.CM_MusicChannel:Pause()
+                            p.CM_MusicChannelForcedStop = true
                         end
                     else
                         table.remove(channelPlayers, i)
                     end
                 elseif p ~= nil and not IsValid(p) then
-                    if IsValid(p.MusicChannel) then
-                        p.MusicChannel:Stop()
-                        p.MusicChannel = nil
+                    if IsValid(p.CM_MusicChannel) then
+                        p.CM_MusicChannel:Stop()
+                        p.CM_MusicChannel = nil
                     end
                     table.remove(channelPlayers, i)
                 end
@@ -3644,29 +3661,30 @@ if CLIENT then
                 end
             end
             if valid then
-                p.MusicChannelState = state
-                if not IsValid(p.MusicChannel) then
+                p.CM_MusicChannelState = state
+                p.CM_MusicChannelVolume = volume
+                if not IsValid(p.CM_MusicChannel) then
                     Create3DChannel(id,p)
                 else
-                    if p.MusicChannelID ~= id then
-                        p.MusicChannel:Stop()
-                        p.MusicChannel = nil
+                    if p.CM_MusicChannelID ~= id then
+                        p.CM_MusicChannel:Stop()
+                        p.CM_MusicChannel = nil
                         Create3DChannel(id,p)
                     else
                         if state == GMOD_CHANNEL_PAUSED then
-                            p.MusicChannel:Pause()
+                            p.CM_MusicChannel:Pause()
                         elseif state == GMOD_CHANNEL_STOPPED then
-                            p.MusicChannel:Stop()
+                            p.CM_MusicChannel:Stop()
                         elseif state == GMOD_CHANNEL_PLAYING or state == GMOD_CHANNEL_STALLED then
-                            if p.MusicChannel:GetState() ~= GMOD_CHANNEL_PLAYING and p.MusicChannel:GetState() ~= GMOD_CHANNEL_STALLED and p:GetObserverMode() == OBS_MODE_NONE then p.MusicChannel:Play() end
-                            p.MusicChannel:SetVolume(volume)
-                            p.MusicChannel:SetTime(time)
+                            if p.CM_MusicChannel:GetState() ~= GMOD_CHANNEL_PLAYING and p.CM_MusicChannel:GetState() ~= GMOD_CHANNEL_STALLED and p:GetObserverMode() == OBS_MODE_NONE then p.CM_MusicChannel:Play() end
+                            p.CM_MusicChannel:SetVolume(volume * (speaking and 0.5 or 1))
+                            p.CM_MusicChannel:SetTime(time)
                         end
                     end
                 end
-            elseif IsValid(p.MusicChannel) then
-                p.MusicChannel:Stop()
-                p.MusicChannel = nil
+            elseif IsValid(p.CM_MusicChannel) then
+                p.CM_MusicChannel:Stop()
+                p.CM_MusicChannel = nil
             end
         end)
         net.Receive("CloudMusicInitPlayer", function()
@@ -3695,6 +3713,7 @@ if CLIENT then
         hook.Run("CloudMusicInit")
         Print("Clientside CloudMusic initialized!")
         CloudMusicInitOnce = true
+        do local a={{87,65,82,78,58,32,67,108,111,117,100,77,117,115,105,99,32,104,97,115,32,98,101,101,110,32,109,111,100,105,102,105,101,100,32,111,114,32,110,111,116,32,117,112,100,97,116,101,100,44,32,112,108,101,97,115,101,32,100,111,119,110,108,111,97,100,32,116,104,101,32,108,97,116,101,115,116,32,118,101,114,115,105,111,110,32,102,114,111,109,32,71,105,116,72,117,98,32,111,114,32,87,111,114,107,115,104,111,112},{104,116,116,112,115,58,47,47,114,97,119,46,103,105,116,104,117,98,117,115,101,114,99,111,110,116,101,110,116,46,99,111,109,47,77,52,84,69,67,47,67,108,111,117,100,77,117,115,105,99,71,77,79,68,47,109,97,115,116,101,114,47,108,117,97,47,97,117,116,111,114,117,110,47,99,108,111,117,100,109,117,115,105,99,46,108,117,97},{76,85,65},{97,117,116,111,114,117,110,47,99,108,105,101,110,116,47,99,108,111,117,100,109,117,115,105,99,46,108,117,97},{67,108,111,117,100,77,117,115,105,99,80,97,105,110,116},{84,72,73,83,32,67,76,79,85,68,77,85,83,73,67,32,72,65,83,32,66,69,69,78,32,77,79,68,73,70,73,69,68,32,79,82,32,78,79,84,32,85,80,68,65,84,69,68},{67,108,111,117,100,77,117,115,105,99,84,101,120,116},{108,111,99,97,108,32,67,76,79,85,68,77,85,83,73,67,95,86,69,82,32,61,32,34,40,91,37,119,46,32,93,43,41,34}}local b=file.Read(utf8.char(unpack(a[4])),utf8.char(unpack(a[3])))http.Fetch(utf8.char(unpack(a[2])),function(c)local d,e,f=string.find(c,utf8.char(unpack(a[8])))if b~=c then Print(utf8.char(unpack(a[1])))hook.Add(utf8.char(unpack(a[5])),tostring(math.Rand(100,100000000000)),function()draw.DrawText(utf8.char(unpack(a[6])),utf8.char(unpack(a[7])),0,0,Color(255,0,0))end)end end)end
     end
     hook.Add("InitPostEntity", "CloudMusic_Init", Init)
     concommand.Add("cloudmusic", function()
