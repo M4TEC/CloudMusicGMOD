@@ -2585,14 +2585,14 @@ if CLIENT then
                         .hud.top-right .song-info, .hud.bottom-right .song-info { text-align: right; position: absolute; right: 41px; }
                         .hud.top-right .lyric, .hud.bottom-right .lyric { margin-top: 16px; }
                         .messages { position: fixed; top: 40vh; right: 0; width: 25vw; text-shadow: none; }
-                        .message { position: relative; color: white; width: 100%; min-height: 40px; padding: 10px; border-top-left-radius: 6px; border-bottom-left-radius: 6px; box-shadow: 0 0 6px #333; background-color: #6CF; margin-bottom: 20px; transition: all .3s linear; }
+                        .message { box-sizing: border-box; position: relative; color: white; width: 100%; min-height: 60px; padding: 10px; border-top-left-radius: 6px; border-bottom-left-radius: 6px; box-shadow: 0 0 6px #333; background-color: #6CF; margin-bottom: 20px; transition: all .3s linear; }
                         .message.error { background-color: #d81e06; }
                         .message.success { background-color: #1afa29; }
                         .message.progress { background: transparent; overflow: hidden; }
                         .message.progress::before { position: absolute; z-index: -1; top: 0; left: -46px; right: 0; height: 100%; content: ''; background: repeating-linear-gradient(55deg,#6cf 1px,#74d9ff 2px,#74d9ff 11px,#6cf 12px,#6cf 20px); animation-name: progress; animation-duration: 1s; animation-timing-function: linear; animation-iteration-count: infinite; }
                         .message .icon { width: 40px; height: 40px; position: absolute; top: 10px; left: 10px; }
-                        .message .title { font-size: 20px; margin-left: 45px; }
-                        .message .content { font-size: 14px; margin-left: 45px; }
+                        .message .title { font-size: 20px; margin-left: 45px; white-space: normal; word-break: break-all; }
+                        .message .content { font-size: 14px; margin-left: 45px; white-space: normal; word-break: break-all; }
                         body { word-break:keep-all; white-space:nowrap; font-family:'Microsoft YaHei',黑体; color:white; transition:all .3s linear; -webkit-transition:all .3s linear; overflow:hidden; }
                         body.hide > *:not(.messages) { opacity:0; -webkit-opacity:0; }
                         body > .lyric { position:fixed; bottom:0; width:100%; text-align:center; visibility:hidden; }
@@ -2769,6 +2769,9 @@ if CLIENT then
                             }
                         }
                         function addMessage(message,title,timeout,type) {
+                            if (title == "") {
+                                title = undefined;
+                            }
                             if (timeout == undefined) {
                                 timeout = 3000;
                             }
@@ -2793,15 +2796,17 @@ if CLIENT then
                             icon.classList.add("icon");
                             icon.src = iurl;
                             msg.appendChild(icon);
+                            var content = document.createElement("div");
+                            content.innerText = message;
                             if (title != undefined) {
                                 var tel = document.createElement("div");
                                 tel.innerText = title;
                                 tel.classList.add("title");
                                 msg.appendChild(tel);
+                                content.classList.add("content");
+                            } else {
+                                content.classList.add("title");
                             }
-                            var content = document.createElement("div");
-                            content.innerText = message;
-                            content.classList.add("content");
                             msg.appendChild(content);
                             msg.style.transform = "translate(100%)";
                             document.querySelector(".messages").appendChild(msg);
@@ -2821,6 +2826,9 @@ if CLIENT then
                         }
                         function addProgress(name,message,title) {
                             if (name == undefined) {return;}
+                            if (title == "") {
+                                title = undefined;
+                            }
                             var msg = document.createElement("div");
                             msg.classList.add("message");
                             msg.classList.add("progress");
@@ -2829,15 +2837,17 @@ if CLIENT then
                             icon.classList.add("icon");
                             icon.src = "https://cm.luotianyi.me/resources/info.png";
                             msg.appendChild(icon);
+                            var content = document.createElement("div");
+                            content.innerText = message;
                             if (title != undefined) {
                                 var tel = document.createElement("div");
                                 tel.innerText = title;
                                 tel.classList.add("title");
                                 msg.appendChild(tel);
+                                content.classList.add("content");
+                            } else {
+                                content.classList.add("title");
                             }
-                            var content = document.createElement("div");
-                            content.innerText = message;
-                            content.classList.add("content");
                             msg.appendChild(content);
                             msg.style.transform = "translate(100%)";
                             document.querySelector(".messages").appendChild(msg);
