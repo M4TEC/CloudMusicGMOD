@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200216" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200217" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -685,11 +685,6 @@ if CLIENT then
             end
             return r
         end
-        local OldSetClipboardText = OldSetClipboardText or SetClipboardText
-        local SetClipboardText = function(...)
-            OldSetClipboardText(...)
-            SetDMUISkin(Derma_Message(GetText("clipboard_msg"), GetText("clipboard_title"), GetText("ok")))
-        end
         Print("Multi-language ready")
         surface.CreateFont("CloudMusicTitle", {
             font = "Microsoft YaHei",
@@ -1232,6 +1227,11 @@ if CLIENT then
             x = x - wx
             y = y - wy - 30
             return x,y
+        end
+        local OldSetClipboardText = OldSetClipboardText or SetClipboardText
+        local SetClipboardText = function(...)
+            OldSetClipboardText(...)
+            SetDMUISkin(Derma_Message(GetText("clipboard_msg"), GetText("clipboard_title"), GetText("ok")))
         end
         CloudMusic = vgui.Create("DFrame")
         CloudMusic:ShowCloseButton(false)
@@ -3708,6 +3708,13 @@ if CLIENT then
         net.Receive("CloudMusicReqInfo", function()
             SendInfoData()
         end)
+        net.Receive("CloudMusicDisconnect", function()
+            local p = net.ReadEntity()
+            if IsValid(p.CM_MusicChannel) then
+                p.CM_MusicChannel:Stop()
+                p.CM_MusicChannel = nil
+            end
+        end)
         net.Start("CloudMusicReqInfo")
         net.SendToServer()
         hook.Run("CloudMusicInit")
@@ -3745,6 +3752,7 @@ if SERVER then
         util.AddNetworkString("CloudMusicInitPlayer")
         util.AddNetworkString("CloudMusicInfo")
         util.AddNetworkString("CloudMusicReqInfo")
+        util.AddNetworkString("CloudMusicDisconnect")
         if not CloudMusicRegisteredULib and ULib ~= nil then
             CloudMusicRegisteredULib = true
             ULib.ucl.registerAccess("cloudmusic3d","user","允许玩家使用3D外放功能","网易云音乐")
@@ -3767,6 +3775,11 @@ if SERVER then
             net.Send(ply)
             return ""
         end
+    end)
+    hook.Add("PlayerDisconnected","CloudMusic_PlayerDisconnected",function(ply)
+        net.Start("CloudMusicDisconnect")
+        net.WriteEntity(ply)
+        net.Broadcast()
     end)
     net.Receive("CloudMusicReqSync", function()
         net.Start("CloudMusicReqSync")
