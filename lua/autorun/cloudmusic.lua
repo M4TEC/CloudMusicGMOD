@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200217" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200218" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -107,8 +107,8 @@ if CLIENT then
             ["random_play"] = "随机播放",
             ["list_play"] = "列表播放",
             ["copy_link"] = "复制链接",
-            ["disable_volume_enchance"] = "关闭音量增强",
-            ["enable_volume_enchance"] = "开启音量增强",
+            ["disable_volume_enhance"] = "关闭音量增强",
+            ["enable_volume_enhance"] = "开启音量增强",
             ["display_ui_fft"] = "显示界面内频谱",
             ["display_hud_fft"] = "显示HUD频谱",
             ["hud_fft_warn"] = "（部分情况可能会导致严重掉帧）",
@@ -266,8 +266,8 @@ if CLIENT then
             ["random_play"] = "隨機播放",
             ["list_play"] = "播放清單",
             ["copy_link"] = "複製鏈結",
-            ["disable_volume_enchance"] = "關閉音量增強",
-            ["enable_volume_enchance"] = "開啟音量增強",
+            ["disable_volume_enhance"] = "關閉音量增強",
+            ["enable_volume_enhance"] = "開啟音量增強",
             ["display_ui_fft"] = "於視窗顯示動畫",
             ["display_hud_fft"] = "HUD顯示動畫",
             ["hud_fft_warn"] = "（可能導致效能降低）",
@@ -424,8 +424,8 @@ if CLIENT then
             ["random_play"] = "Random",
             ["list_play"] = "List Play",
             ["copy_link"] = "Copy Link",
-            ["disable_volume_enchance"] = "Disable Volume Enchance",
-            ["enable_volume_enchance"] = "Enable Volume Enchance",
+            ["disable_volume_enhance"] = "Disable Volume Enhance",
+            ["enable_volume_enhance"] = "Enable Volume Enhance",
             ["display_ui_fft"] = "Display FFT in UI",
             ["display_hud_fft"] = "Display FFT in HUD",
             ["hud_fft_warn"] = "(might effect FPS sometimes)",
@@ -550,7 +550,7 @@ if CLIENT then
             ["CloudMusicFFT"] = true,
             ["CloudMusicHUDFFT"] = false,
             ["CloudMusicVolume"] = 1,
-            ["CloudMusicVolumeEnchance"] = false,
+            ["CloudMusicVolumeEnhance"] = false,
             ["CloudMusicHUDTextShadow"] = true,
             ["CloudMusicPublicInfo"] = true,
             ["CloudMusicLyricCentered"] = false,
@@ -776,6 +776,27 @@ if CLIENT then
             msg = str
             timer.Simple(10, function()msg = "" end)
         end
+        local function AddMessage(message,title,timeout,type)
+            local title = title or ""
+            local timeout = timeout or 3000
+            local type = type or ""
+            CloudMusic.HUD:RunJavascript([[
+                addMessage("]]..tostring(message):JavascriptSafe()..[[","]]..tostring(title):JavascriptSafe()..[[",]]..tostring(timeout):JavascriptSafe()..[[,"]]..tostring(type):JavascriptSafe()..[[");
+            ]]);
+        end
+        local function AddProgress(name,message,title)
+            if not name then return end
+            local title = title or ""
+            CloudMusic.HUD:RunJavascript([[
+                addProgress("]]..tostring(name):JavascriptSafe()..[[","]]..tostring(message):JavascriptSafe()..[[","]]..tostring(title):JavascriptSafe()..[[");
+            ]]);
+        end
+        local function RemoveProgress(name)
+            if not name then return end
+            CloudMusic.HUD:RunJavascript([[
+                removeProgress("]]..tostring(name):JavascriptSafe()..[[");
+            ]]);
+        end
         local function FetchLyric()
             local currentPlaying = CloudMusic.CurrentPlaying
             lrc = nil
@@ -787,17 +808,17 @@ if CLIENT then
             http.Fetch("http://api.texl.top/netease/lyric/?id="..CloudMusic.CurrentPlaying.ID, function(body)
                 local json = util.JSONToTable(body)
                 if not json then
-                    notification.AddLegacy(GetText("lyricfailed",{"name",currentPlaying.Name}), NOTIFY_ERROR, 3)
+                    AddMessage(GetText("lyricfailed",{"name",currentPlaying.Name}),nil,3000,"error")
                     Print("Failed to fetch the lyric of "..currentPlaying.Name)
                     return
                 end
                 if json["code"] ~= 200 then
-                    notification.AddLegacy(GetText("lyricfailed_detail",{"name",currentPlaying.Name},{"msg",json["msg"]}), NOTIFY_ERROR, 3)
+                    AddMessage(GetText("lyricfailed_detail",{"name",currentPlaying.Name},{"msg",json["msg"]}),nil,3000,"error");
                     Print("Failed to fetch the lyric of "..currentPlaying.Name.." because "..json["msg"])
                     return
                 end
                 if json["lyric"] == nil or json["lyric"] == "" or not json["lyric"]["lrc"] then
-                    notification.AddLegacy(GetText("nolyric",{"name",currentPlaying.Name}), NOTIFY_GENERIC, 3)
+                    AddMessage(GetText("nolyric",{"name",currentPlaying.Name}))
                     Print("Song "..currentPlaying.Name.." doesn't have a lyric")
                     return
                 end
@@ -805,7 +826,7 @@ if CLIENT then
                 lrc = json["lyric"]["lrc"]
                 transLrc = json["lyric"]["tlrc"]
                 Print("Fetch lyric successed")
-            end, function()notification.AddLegacy(GetText("lyricfailed",{"name",currentPlaying.Name}), NOTIFY_ERROR, 3)end)
+            end, function()AddMessage(GetText("lyricfailed",{"name",currentPlaying.Name}),nil,3000,"error")end)
         end
         local function SongEnded()
             if CloudMusic.NextPlay then
@@ -839,9 +860,9 @@ if CLIENT then
         end
         local function SongPlayError()
             if CloudMusic.CurrentPlaying == nil then return end
-            notification.AddLegacy(GetText("playerror",{"name",CloudMusic.CurrentPlaying.Name}), NOTIFY_ERROR, 3)
+            AddMessage(GetText("playerror",{"name",CloudMusic.CurrentPlaying.Name}),nil,3000,"error")
             if errorCount == 5 then
-                notification.AddLegacy(GetText("continue_error"), NOTIFY_GENERIC, 3)
+                AddMessage(GetText("continue_error"))
                 Print("Play error count reached 5, stop trying")
                 errorCount = 0
                 return
@@ -866,7 +887,7 @@ if CLIENT then
             elseif GetSettings("CloudMusicPlayMode") == "Random" then
                 CloudMusic:Play(math.random(1, #CloudMusic.Playlist.Songs))
             elseif GetSettings("CloudMusicPlayMode") == "SingleLoop" then
-                notification.AddLegacy(GetText("playerror_loop",{"name",CloudMusic.CurrentPlaying.Name}), NOTIFY_GENERIC, 3)
+                AddMessage(GetText("playerror_loop",{"name",CloudMusic.CurrentPlaying.Name}))
                 CloudMusic:Next()
             end
         end
@@ -939,7 +960,7 @@ if CLIENT then
         end
         local function GetSongURL(id,callback,finally)
             if GetSettings("CloudMusicUseServer") then
-                TokenRequest("https://cm.m4tec.org/api/song/url?id="..id,function(body)
+                TokenRequest("https://cm.luotianyi.me/api/song/url?id="..id,function(body)
                     local result = util.JSONToTable(body)
                     if not result or not result["data"] or not result["data"][1] or not result["data"][1]["url"] then
                         if type(callback) == "function" then
@@ -1093,10 +1114,10 @@ if CLIENT then
                 CloudMusic.Login:SetVisible(true)
             else
                 Print("User token detected, try to fetch user info")
-                TokenRequest("https://cm.m4tec.org/api/login/status?u="..LocalPlayer():SteamID64().."&t="..os.time(),function(body)
+                TokenRequest("https://cm.luotianyi.me/api/login/status?u="..LocalPlayer():SteamID64().."&t="..os.time(),function(body)
                     userDetail = util.JSONToTable(body)
                     if userDetail == nil or (userDetail["code"] ~= 200 and userDetail["code"] ~= 301) then
-                        notification.AddLegacy(GetText("userinfofailed"), NOTIFY_ERROR, 3)
+                        AddMessage(GetText("userinfofailed"),nil,3000,"error")
                         CloudMusic.Login:SetVisible(true)
                         Print("Failed to fetch user info, using default layout")
                         return
@@ -1108,7 +1129,7 @@ if CLIENT then
                     end
                     userDetail = userDetail["profile"]
                     if table.IsEmpty(userDetail) then
-                        notification.AddLegacy(GetText("userinfofailed"), NOTIFY_ERROR, 3)
+                        AddMessage(GetText("userinfofailed"),nil,3000,"error")
                         CloudMusic.Login:SetVisible(true)
                         Print("Failed to fetch user info, using default layout")
                         return
@@ -1185,7 +1206,7 @@ if CLIENT then
                     CloudMusic.User:SetVisible(true)
                     hook.Run("CloudMusicUserInfo",userDetail)
                 end,function()
-                    notification.AddLegacy(GetText("userinfofailed"), NOTIFY_ERROR, 3)
+                    AddMessage(GetText("userinfofailed"),nil,3000,"error")
                     CloudMusic.Login:SetVisible(true)
                     Print("Failed to fetch user info, using default layout")
                 end)
@@ -1459,7 +1480,7 @@ if CLIENT then
                 self:SetDisabled(true)
                 Print("Logging in...")
                 if CloudMusic.LoginPrompt.Mode == "Email" then
-                    TokenRequest("https://cm.m4tec.org/api/login?email="..CloudMusic.LoginPrompt.Username:GetValue():JavascriptSafe().."&password="..CloudMusic.LoginPrompt.Password:GetValue():JavascriptSafe().."&u="..LocalPlayer():SteamID64(),function(body)
+                    TokenRequest("https://cm.luotianyi.me/api/login?email="..CloudMusic.LoginPrompt.Username:GetValue():JavascriptSafe().."&password="..CloudMusic.LoginPrompt.Password:GetValue():JavascriptSafe().."&u="..LocalPlayer():SteamID64(),function(body)
                         local result = util.JSONToTable(body)
                         if not result or (result["code"] ~= 200 and not result["msg"]) then
                             SetDMUISkin(Derma_Message(GetText("loginfailed"), GetText("error"), GetText("ok")))
@@ -1486,7 +1507,7 @@ if CLIENT then
                         self:SetDisabled(false)
                     end)
                 else
-                    TokenRequest("https://cm.m4tec.org/api/login/cellphone?phone="..CloudMusic.LoginPrompt.Username:GetValue():JavascriptSafe().."&password="..CloudMusic.LoginPrompt.Password:GetValue():JavascriptSafe().."&countrycode="..CloudMusic.LoginPrompt.PhoneAreaNum:GetValue().."&u="..LocalPlayer():SteamID64(),function(body)
+                    TokenRequest("https://cm.luotianyi.me/api/login/cellphone?phone="..CloudMusic.LoginPrompt.Username:GetValue():JavascriptSafe().."&password="..CloudMusic.LoginPrompt.Password:GetValue():JavascriptSafe().."&countrycode="..CloudMusic.LoginPrompt.PhoneAreaNum:GetValue().."&u="..LocalPlayer():SteamID64(),function(body)
                         local result = util.JSONToTable(body)
                         if result == nil then
                             SetDMUISkin(Derma_Message(GetText("loginfailed"), GetText("error"), GetText("ok")))
@@ -1532,7 +1553,7 @@ if CLIENT then
         CloudMusic.Logout:SetI18N("logout")
         CloudMusic.Logout.Paint = ButtonPaint
         function CloudMusic.Logout:DoClick()
-            TokenRequest("https://cm.m4tec.org/api/logout?uid="..LocalPlayer():SteamID64(),function(body)
+            TokenRequest("https://cm.luotianyi.me/api/logout?uid="..LocalPlayer():SteamID64(),function(body)
                 SetSettings("CloudMusicUserToken","")
                 InitUserInfo()
                 SetDMUISkin(Derma_Message(GetText("logoutsuccess"),GetText("success"),GetText("ok")))
@@ -1587,7 +1608,7 @@ if CLIENT then
             function CloudMusic.UInfo.Signin:DoClick()
                 self:SetDisabled(true)
                 Print("Signing in with Netease Android client")
-                TokenRequest("https://cm.m4tec.org/api/daily_signin?t="..os.time(),function(body)
+                TokenRequest("https://cm.luotianyi.me/api/daily_signin?t="..os.time(),function(body)
                     local json = util.JSONToTable(body)
                     if json["code"] == 200 then
                         SetDMUISkin(Derma_Message(GetText("signinsuccess",{"point",json["point"]}), GetText("signin"), GetText("ok")))
@@ -1611,7 +1632,7 @@ if CLIENT then
                 HideOverlay()
             end
             Print("Fetching user details")
-            TokenRequest("https://cm.m4tec.org/api/user/subcount?u="..LocalPlayer():SteamID64(),function(body)
+            TokenRequest("https://cm.luotianyi.me/api/user/subcount?u="..LocalPlayer():SteamID64(),function(body)
                 local json = util.JSONToTable(body)
                 if not json then
                     CloudMusic.UInfo.Details:SetI18N("fetch_failed",I18N_VALUE)
@@ -1794,7 +1815,7 @@ if CLIENT then
             local prev,next = CloudMusic.PrevPage:IsVisible(),CloudMusic.NextPage:IsVisible()
             CloudMusic.PrevPage:SetVisible(false)
             CloudMusic.NextPage:SetVisible(false)
-            TokenRequest("https://cm.m4tec.org/api/recommend/songs?uid="..LocalPlayer():SteamID64(),function(body)
+            TokenRequest("https://cm.luotianyi.me/api/recommend/songs?uid="..LocalPlayer():SteamID64(),function(body)
                 local result = util.JSONToTable(body)
                 if not result or result["code"] ~= 200 then
                     SetDMUISkin(Derma_Message(GetText("fetch_daily_recommend_failed"), GetText("error"), GetText("ok")))
@@ -1829,7 +1850,7 @@ if CLIENT then
             local prev,next = CloudMusic.PrevPage:IsVisible(),CloudMusic.NextPage:IsVisible()
             CloudMusic.PrevPage:SetVisible(false)
             CloudMusic.NextPage:SetVisible(false)
-            TokenRequest("https://cm.m4tec.org/api/user/playlist?uid="..userDetail["userId"],function(body)
+            TokenRequest("https://cm.luotianyi.me/api/user/playlist?uid="..userDetail["userId"],function(body)
                 local result = util.JSONToTable(body)
                 if not result or result["code"] ~= 200 then
                     SetDMUISkin(Derma_Message(GetText("fetch_user_playlists_faield"), GetText("error"), GetText("ok")))
@@ -2188,7 +2209,7 @@ if CLIENT then
             if buffering or song == nil then return end
             if type(song) == "number" then
                 if #self.Playlist.Songs == 0 then
-                    notification.AddLegacy(GetText("empty_playlist"), NOTIFY_GENERIC, 3)
+                    AddMessage(GetText("empty_playlist"))
                     return
                 end
                 if self.Playlist.Songs[song] then
@@ -2216,13 +2237,13 @@ if CLIENT then
             SendInfoData()
             local cId = self.CurrentPlaying.ID
             Print("Try to play "..self.CurrentPlaying.Name.." - "..self.CurrentPlaying.Artist)
-            notification.AddProgress("CloudMusicBuffering", GetText("try_play",{"name",self.CurrentPlaying.Name},{"artists",self.CurrentPlaying.Artist}))
+            AddProgress("CloudMusicBuffering",GetText("try_play",{"name",self.CurrentPlaying.Name},{"artists",self.CurrentPlaying.Artist}))
             buffering = true
             GetSongURL(cId,function(url)
                 Print("Fetch song url successed")
                 sound.PlayURL(url, "noblock", function(station)
                     buffering = false
-                    notification.Kill("CloudMusicBuffering")
+                    RemoveProgress("CloudMusicBuffering")
                     if IsValid(station) then
                         if self.CurrentPlaying ~= nil and self.CurrentPlaying.ID == cId and not IsValid(self.CurrentChannel) then
                             station:Play()
@@ -2330,9 +2351,9 @@ if CLIENT then
             draw.RoundedBox(2.5, self:GetWide()-100, self:GetTall()-9.5, 100, 5, Color(226,226,226))
             draw.RoundedBox(2.5, self:GetWide()-100, self:GetTall()-9.5, CloudMusic.Volume*100, 5, GetSettings("CloudMusicBarColor"))
             if buffering then
-                draw.DrawText(GetText("trying_play"), "CloudMusicText", self.VolumeEnchance:IsVisible() and self.VolumeEnchance:GetPos()-5 or self.CopyLink:GetPos()-5, 3, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
+                draw.DrawText(GetText("trying_play"), "CloudMusicText", self.Volumeenhance:IsVisible() and self.Volumeenhance:GetPos()-5 or self.CopyLink:GetPos()-5, 3, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
             elseif IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_STALLED then
-                draw.DrawText(GetText("buffering"), "CloudMusicText", self.VolumeEnchance:IsVisible() and self.VolumeEnchance:GetPos()-5 or self.CopyLink:GetPos()-5, 3, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
+                draw.DrawText(GetText("buffering"), "CloudMusicText", self.Volumeenhance:IsVisible() and self.Volumeenhance:GetPos()-5 or self.CopyLink:GetPos()-5, 3, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
             end
         end
         function CloudMusic.Player:OnMousePressed(key)
@@ -2385,7 +2406,7 @@ if CLIENT then
                 self.Next:SetVisible(false)
                 self.Mode:SetVisible(false)
                 self.CopyLink:SetVisible(false)
-                self.VolumeEnchance:SetVisible(false)
+                self.Volumeenhance:SetVisible(false)
             elseif not (self.Prev:IsVisible() or self.PlayPause:IsVisible() or self.Next:IsVisible() or self.Mode:IsVisible() or self.Mode:IsVisible() or self.CopyLink:IsVisible()) then
                 self.Prev:SetVisible(true)
                 self.PlayPause:SetVisible(true)
@@ -2394,7 +2415,7 @@ if CLIENT then
                 self.CopyLink:SetVisible(true)
             end
             if CloudMusic.Volume >= 1 and CloudMusic.CurrentPlaying ~= nil then
-                self.VolumeEnchance:SetVisible(true)
+                self.Volumeenhance:SetVisible(true)
             end
         end
         CloudMusic.Player.Prev = vgui.Create("DButton",CloudMusic.Player)
@@ -2500,25 +2521,25 @@ if CLIENT then
             SetClipboardText("https://music.163.com/song/media/outer/url?id="..CloudMusic.CurrentPlaying.ID..".mp3")
         end
         CloudMusic.Player.CopyLink.Paint = ButtonPaint
-        CloudMusic.Player.VolumeEnchance = vgui.Create("DButton",CloudMusic.Player)
-        function CloudMusic.Player.VolumeEnchance:LangUpdate()
+        CloudMusic.Player.Volumeenhance = vgui.Create("DButton",CloudMusic.Player)
+        function CloudMusic.Player.Volumeenhance:LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(CloudMusic.Player.CopyLink:GetPos()-self:GetWide()-5,0)
         end
-        CloudMusic.Player.VolumeEnchance.DoClick = function()
-            if not GetSettings("CloudMusicVolumeEnchance") then
-                SetSettings("CloudMusicVolumeEnchance",true)
+        CloudMusic.Player.Volumeenhance.DoClick = function()
+            if not GetSettings("CloudMusicVolumeenhance") then
+                SetSettings("CloudMusicVolumeenhance",true)
             else
                 CloudMusic.Volume = 1
                 SetSettings("CloudMusicVolume",1)
-                SetSettings("CloudMusicVolumeEnchance",false)
+                SetSettings("CloudMusicVolumeenhance",false)
             end
         end
-        function CloudMusic.Player.VolumeEnchance:Think()
-            self:SetI18N(GetSettings("CloudMusicVolumeEnchance") and "disable_volume_enchance" or "enable_volume_enchance")
+        function CloudMusic.Player.Volumeenhance:Think()
+            self:SetI18N(GetSettings("CloudMusicVolumeenhance") and "disable_volume_enhance" or "enable_volume_enhance")
             if CloudMusic.Volume >= 1 then
-                if GetSettings("CloudMusicVolumeEnchance") and CloudMusic.Volume ~= 2 then
+                if GetSettings("CloudMusicVolumeenhance") and CloudMusic.Volume ~= 2 then
                     CloudMusic.Volume = 2
                     SetSettings("CloudMusicVolume",2)
                 end
@@ -2526,69 +2547,87 @@ if CLIENT then
                 self:SetVisible(false)
             end
         end
-        CloudMusic.Player.VolumeEnchance.Paint = ButtonPaint
+        CloudMusic.Player.Volumeenhance.Paint = ButtonPaint
         CloudMusic.HUD = vgui.Create("DHTML")
         CloudMusic.HUD:ParentToHUD()
         CloudMusic.HUD:SetSize(ScrW(),ScrH())
         CloudMusic.HUD:SetHTML([[
-                <html>
-                    <head>
-                        <style>
-                            .hud { position: fixed; }
-                            .hud.top-left { top: 5px; left: 5px; }
-                            .hud.top-right { top: 5px; right: 5px; text-align: right; }
-                            .hud.bottom-left { bottom: 5px; left: 5px; }
-                            .hud.bottom-right { bottom: 5px; right: 5px; text-align: right; }
-                            .circle-bar { display:inline-block; font-size:200px; width: 36px; height: 36px; position: relative; background-color: #66CCFF; }
-                            .circle-bar-left,.circle-bar-right { width: 36px; height: 36px; background-color: white; }
-                            .circle-bar-right { clip:rect(0,auto,auto,18px); }
-                            .circle-bar-left { clip:rect(0,18px,auto,0); }
-                            .circle-bar * {  position: absolute; top:0; right:0; bottom:0; left:0; margin:auto; }
-                            .circle-bar, .circle-bar > * { border-radius: 50%; }
-                            .circle-bar > .thumbnail { width:32px; height:32px; position:absolute; top:0px; left:0px; z-index:2; }
-                            .song-info { display:inline-block; }
-                            .song-info > .artist { font-size:12px; }
-                            .hud .lyric > span:first-of-type { font-size:18px; }
-                            .hud .lyric > span:last-of-type { font-size:12px; }
-                            .lyric > span { -webkit-transition:all .1s linear; opacity:1; }
-                            .hud.bottom-left .lyric, .hud.bottom-right .lyric { position: relative; height: 0; top: -85px; }
-                            .hud.top-right .circle-bar, .hud.bottom-right .circle-bar { float: right; }
-                            .hud.top-right .song-info, .hud.bottom-right .song-info { text-align: right; position: absolute; right: 41px; }
-                            .hud.top-right .lyric, .hud.bottom-right .lyric { margin-top: 16px; }
-                            body { word-break:keep-all; white-space:nowrap; font-family:'Microsoft YaHei',黑体; color:white; transition:all .3s linear; -webkit-transition:all .3s linear; overflow:hidden; }
-                            body.hide { opacity:0; -webkit-opacity:0; }
-                            body > .lyric { position:fixed; bottom:0; width:100%; text-align:center; visibility:hidden; }
-                            body.center-lyric > .lyric { visibility:visible; }
-                            body.center-lyric .hud .lyric { visibility:hidden; }
-                            body.text-shadow { text-shadow: 1px 1px 2px #666; }
-                        </style>
-                        <style id="spec-lrc"></style>
-                        <style id="custom"></style>
-                    </head>
-                    <body class="hide">
-                        <div class="hud">
-                            <div class="circle-bar">
-                                <div class="circle-bar-left"></div>
-                                <div class="circle-bar-right"></div>
-                                <img src="" class="thumbnail"/>
-                            </div>
-                            <div class="song-info">
-                                <span class="name"></span><br/>
-                                <span class="artist"></span>
-                            </div>
-                            <br/>
-                            <div class="lyric">
-                                <span></span>
-                                <br/>
-                                <span></span>
-                            </div>
+            <html>
+                <head>
+                    <style>
+                        @keyframes progress {
+                            from {
+                                transform: translateX(46px);
+                            }
+                            to { 
+                                transform: translateX(0);
+                            }
+                        }
+                        .hud { position: fixed; }
+                        .hud.top-left { top: 5px; left: 5px; }
+                        .hud.top-right { top: 5px; right: 5px; text-align: right; }
+                        .hud.bottom-left { bottom: 5px; left: 5px; }
+                        .hud.bottom-right { bottom: 5px; right: 5px; text-align: right; }
+                        .circle-bar { display:inline-block; font-size:200px; width: 36px; height: 36px; position: relative; background-color: #66CCFF; }
+                        .circle-bar-left,.circle-bar-right { width: 36px; height: 36px; background-color: white; }
+                        .circle-bar-right { clip:rect(0,auto,auto,18px); }
+                        .circle-bar-left { clip:rect(0,18px,auto,0); }
+                        .circle-bar * {  position: absolute; top:0; right:0; bottom:0; left:0; margin:auto; }
+                        .circle-bar, .circle-bar > * { border-radius: 50%; }
+                        .circle-bar > .thumbnail { width:32px; height:32px; position:absolute; top:0px; left:0px; z-index:2; }
+                        .song-info { display:inline-block; }
+                        .song-info > .artist { font-size:12px; }
+                        .hud .lyric > span:first-of-type { font-size:18px; }
+                        .hud .lyric > span:last-of-type { font-size:12px; }
+                        .lyric > span { -webkit-transition:all .1s linear; opacity:1; }
+                        .hud.bottom-left .lyric, .hud.bottom-right .lyric { position: relative; height: 0; top: -85px; }
+                        .hud.top-right .circle-bar, .hud.bottom-right .circle-bar { float: right; }
+                        .hud.top-right .song-info, .hud.bottom-right .song-info { text-align: right; position: absolute; right: 41px; }
+                        .hud.top-right .lyric, .hud.bottom-right .lyric { margin-top: 16px; }
+                        .messages { position: fixed; top: 40vh; right: 0; width: 25vw; text-shadow: none; }
+                        .message { position: relative; color: white; width: 100%; min-height: 40px; padding: 10px; border-top-left-radius: 6px; border-bottom-left-radius: 6px; box-shadow: 0 0 6px #333; background-color: #6CF; margin-bottom: 20px; transition: all .3s linear; }
+                        .message.error { background-color: #d81e06; }
+                        .message.success { background-color: #1afa29; }
+                        .message.progress { background: transparent; overflow: hidden; }
+                        .message.progress::before { position: absolute; z-index: -1; top: 0; left: -46px; right: 0; height: 100%; content: ''; background: repeating-linear-gradient(55deg,#6cf 1px,#74d9ff 2px,#74d9ff 11px,#6cf 12px,#6cf 20px); animation-name: progress; animation-duration: 1s; animation-timing-function: linear; animation-iteration-count: infinite; }
+                        .message .icon { width: 40px; height: 40px; position: absolute; top: 10px; left: 10px; }
+                        .message .title { font-size: 20px; margin-left: 45px; }
+                        .message .content { font-size: 14px; margin-left: 45px; }
+                        body { word-break:keep-all; white-space:nowrap; font-family:'Microsoft YaHei',黑体; color:white; transition:all .3s linear; -webkit-transition:all .3s linear; overflow:hidden; }
+                        body.hide > *:not(.messages) { opacity:0; -webkit-opacity:0; }
+                        body > .lyric { position:fixed; bottom:0; width:100%; text-align:center; visibility:hidden; }
+                        body.center-lyric > .lyric { visibility:visible; }
+                        body.center-lyric .hud .lyric { visibility:hidden; }
+                        body.text-shadow { text-shadow: 1px 1px 2px #666; }
+                    </style>
+                    <style id="spec-lrc"></style>
+                    <style id="custom"></style>
+                </head>
+                <body class="hide">
+                    <div class="hud">
+                        <div class="circle-bar">
+                            <div class="circle-bar-left"></div>
+                            <div class="circle-bar-right"></div>
+                            <img src="" class="thumbnail"/>
                         </div>
+                        <div class="song-info">
+                            <span class="name"></span><br/>
+                            <span class="artist"></span>
+                        </div>
+                        <br/>
                         <div class="lyric">
                             <span></span>
                             <br/>
                             <span></span>
                         </div>
-                        <script>
+                    </div>
+                    <div class="lyric">
+                        <span></span>
+                        <br/>
+                        <span></span>
+                    </div>
+                    <div class="messages"></div>
+                    <script>
                         Element.prototype.css = function(property,value){
                             if ( value ) {
                                 var index = property.indexOf('-');
@@ -2729,10 +2768,99 @@ if CLIENT then
                                 els[i].parentNode.removeChild(els[i]);
                             }
                         }
-                        </script>
-                    </body>
-                </html>
-            ]])
+                        function addMessage(message,title,timeout,type) {
+                            if (timeout == undefined) {
+                                timeout = 3000;
+                            }
+                            if (type == undefined) {
+                                type = "";
+                            }
+                            var msg = document.createElement("div");
+                            msg.classList.add("message");
+                            if (type != "") {
+                                msg.classList.add(type);
+                            }
+                            var iurl = "https://cm.luotianyi.me/resources/info.png";
+                            switch(type) {
+                                case "error":
+                                    iurl = "https://cm.luotianyi.me/resources/error.png";
+                                    break;
+                                case "success":
+                                    iurl = "https://cm.luotianyi.me/resources/success.png";
+                                    break;
+                            }
+                            var icon = document.createElement("img");
+                            icon.classList.add("icon");
+                            icon.src = iurl;
+                            msg.appendChild(icon);
+                            if (title != undefined) {
+                                var tel = document.createElement("div");
+                                tel.innerText = title;
+                                tel.classList.add("title");
+                                msg.appendChild(tel);
+                            }
+                            var content = document.createElement("div");
+                            content.innerText = message;
+                            content.classList.add("content");
+                            msg.appendChild(content);
+                            msg.style.transform = "translate(100%)";
+                            document.querySelector(".messages").appendChild(msg);
+                            setTimeout(function() {
+                                msg.style.transform = "translate(0)";
+                            });
+                            setTimeout(function() {
+                                msg.style.overflow = "hidden";
+                                msg.style.minHeight = "0";
+                                msg.style.height = "0";
+                                msg.style.margin = "0";
+                                msg.style.padding = "0 10px";
+                                setTimeout(function() {
+                                    msg.parentNode.removeChild(msg);
+                                },300);
+                            },300+timeout);
+                        }
+                        function addProgress(name,message,title) {
+                            if (name == undefined) {return;}
+                            var msg = document.createElement("div");
+                            msg.classList.add("message");
+                            msg.classList.add("progress");
+                            msg.classList.add(name);
+                            var icon = document.createElement("img");
+                            icon.classList.add("icon");
+                            icon.src = "https://cm.luotianyi.me/resources/info.png";
+                            msg.appendChild(icon);
+                            if (title != undefined) {
+                                var tel = document.createElement("div");
+                                tel.innerText = title;
+                                tel.classList.add("title");
+                                msg.appendChild(tel);
+                            }
+                            var content = document.createElement("div");
+                            content.innerText = message;
+                            content.classList.add("content");
+                            msg.appendChild(content);
+                            msg.style.transform = "translate(100%)";
+                            document.querySelector(".messages").appendChild(msg);
+                            setTimeout(function() {
+                                msg.style.transform = "translate(0)";
+                            });
+                        }
+                        function removeProgress(name) {
+                            for (var msg of document.querySelectorAll(".message." + name)) {
+                                msg.style.overflow = "hidden";
+                                msg.style.minHeight = "0";
+                                msg.style.height = "0";
+                                msg.style.margin = "0";
+                                msg.style.padding = "0 10px";
+                                setTimeout(function() {
+                                    msg.parentNode.removeChild(msg);
+                                },300);
+                            }
+                        }
+                    </script>
+                </body>
+            </html>
+        ]])
         function CloudMusic.HUD:OnDocumentReady()
             self.Ready = true
             local text = GetSettings("CloudMusicHUDTextColor")
