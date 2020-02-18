@@ -3885,9 +3885,9 @@ if CLIENT then
         hook.Run("CloudMusicInit")
         Print("Clientside CloudMusic initialized!")
         CloudMusicInitOnce = true
-        timer.Create("CloudMusic_VersionChecker",360,0,CheckVersion)
-        timer.Start("CloudMusic_VersionChecker")
-        CheckVersion()
+        --timer.Create("CloudMusic_VersionChecker",360,0,CheckVersion)
+        --timer.Start("CloudMusic_VersionChecker")
+        --CheckVersion()
     end
     hook.Add("InitPostEntity", "CloudMusic_Init", Init)
     concommand.Add("cloudmusic", function()
