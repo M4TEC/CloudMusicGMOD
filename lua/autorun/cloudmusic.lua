@@ -787,7 +787,6 @@ if CLIENT then
             local lua = file.Read("autorun/cloudmusic.lua","LUA")
             http.Fetch("https://cm.luotianyi.me/version.php",function(body)
                 local json = util.JSONToTable(body)
-                PrintTable(json)
                 if json["version"] ~= CLOUDMUSIC_VER then
                     Print("CloudMusic is outdated, please update to latest version")
                     cmStatus = CM_VER_OUDATED
