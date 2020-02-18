@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200218" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200218.01" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -163,12 +163,14 @@ if CLIENT then
             ["continue_error"] = "由于已经连续5次无法播放，将停止尝试",
             ["playerror_loop"] = "由于 %name% 无法播放，已切到下一首",
             ["userinfofailed"] = "获取网易云用户信息失败",
-            ["try_play"] = "正在尝试播放 %name% - %artists%",
+            ["try_play"] = "正在尝试播放",
             ["empty_playlist"] = "播放列表为空",
             ["3dplay_no_perm"] = "你没有权限开启外放",
             ["no_perm"] = "无权限",
             ["clipboard_msg"] = "已复制到剪贴板",
             ["clipboard_title"] = "复制成功",
+            ["outdated"] = "（旧版本，不受支持）",
+            ["modified"] = "（修改版，不受支持）",
             ["verbose_help"] = "启用网易云播放器啰嗦模式"
         },
         ["zh-TW"] = {
@@ -321,12 +323,14 @@ if CLIENT then
             ["continue_error"] = "連續５次嘗試失敗，動作已停止",
             ["playerror_loop"] = "%name% 無法播放，切換至下一首",
             ["userinfofailed"] = "取得網易雲會員資料失敗",
-            ["try_play"] = "嘗試播放 %name% - %artists%",
+            ["try_play"] = "嘗試播放",
             ["empty_playlist"] = "播放清單空白",
             ["3dplay_no_perm"] = "您沒有權限開啟外放",
             ["no_perm"] = "無權限",
             ["clipboard_msg"] = "已複製至剪貼版",
             ["clipboard_title"] = "複製成功",
+            ["outdated"] = "（舊版本，不受支持）",
+            ["modified"] = "（修改版，不受支持）",
             ["verbose_help"] = "啟用網易雲播放器囉嗦模式"
         },
         ["en"] = {
@@ -479,12 +483,14 @@ if CLIENT then
             ["continue_error"] = "Continue failed to play for 5 times, stop trying",
             ["playerror_loop"] = "Because %name% can't play, switched to next song",
             ["userinfofailed"] = "Failed to fetch account information",
-            ["try_play"] = "Try to play %name% - %artists%",
+            ["try_play"] = "Try to play",
             ["empty_playlist"] = "The playlist is empty",
             ["3dplay_no_perm"] = "You don't have permission to turn on 3D Play",
             ["no_perm"] = "No permission",
             ["clipboard_msg"] = "Copied to clipboard",
             ["clipboard_title"] = "Copy success",
+            ["outdated"] = " (Outdated Version, No support provided)",
+            ["modified"] = " (Modified Version, No support provided)",
             ["verbose_help"] = "Enable verbose mode of Cloud Music player"
         }
     }
@@ -772,6 +778,28 @@ if CLIENT then
             outline = false,
         })
         Print("Fonts created")
+        CM_VER_OK = 0
+        CM_VER_OUDATED = 1
+        CM_VER_MODIFIED = 2
+        local cmStatus = CM_VER_OK
+        local function CheckVersion()
+            Print("Checking Cloud Music version...")
+            local lua = file.Read("autorun/cloudmusic.lua","LUA")
+            local hash = util.CRC(lua)
+            http.Fetch("https://cm.luotianyi.me/version.php",function(body)
+                local json = util.JSONToTable(body)
+                if json["version"] ~= CLOUDMUSIC_VER then
+                    Print("CloudMusic is outdated, please update to latest version")
+                    cmStatus = CM_VER_OUDATED
+                elseif json["hash"] ~= hash then
+                    Print("CloudMusic is modified, this copy of Cloud Music won't get support of developer")
+                    cmStatus = CM_VER_MODIFIED
+                else
+                    Print("CloudMusic is up to date")
+                    cmStatus = CM_VER_OK
+                end
+            end)
+        end
         local function TextMessage(str)
             msg = str
             timer.Simple(10, function()msg = "" end)
@@ -1530,6 +1558,7 @@ if CLIENT then
                         CloudMusic.LoginPrompt.PhoneAreaNum:SetDisabled(false)
                         CloudMusic.LoginPrompt.Username:SetDisabled(false)
                         CloudMusic.LoginPrompt.Password:SetDisabled(false)
+                        CloudMusic.LoginPrompt.Privacy.Select:SetDisabled(false)
                         self:SetDisabled(false)
                     end)
                 end
@@ -2221,6 +2250,7 @@ if CLIENT then
             elseif type(song) == "table" then
                 self.CurrentPlaying = song
             end
+            buffering = true
             self.Player.Thumbnail:SetHTML([[
                 <body style="margin:0;">
                     <img src="]]..self.CurrentPlaying.Thumbnail..[[" style="width:100%;height:100%;"/>
@@ -2237,8 +2267,7 @@ if CLIENT then
             SendInfoData()
             local cId = self.CurrentPlaying.ID
             Print("Try to play "..self.CurrentPlaying.Name.." - "..self.CurrentPlaying.Artist)
-            AddProgress("CloudMusicBuffering",GetText("try_play",{"name",self.CurrentPlaying.Name},{"artists",self.CurrentPlaying.Artist}))
-            buffering = true
+            AddProgress("CloudMusicBuffering",self.CurrentPlaying.Name.." - "..self.CurrentPlaying.Artist,GetText("try_play"))
             GetSongURL(cId,function(url)
                 Print("Fetch song url successed")
                 sound.PlayURL(url, "noblock", function(station)
@@ -2593,8 +2622,8 @@ if CLIENT then
                         .message .icon { width: 40px; height: 40px; position: absolute; top: 10px; left: 10px; }
                         .message .title { font-size: 20px; margin-left: 45px; white-space: normal; word-break: break-all; }
                         .message .content { font-size: 14px; margin-left: 45px; white-space: normal; word-break: break-all; }
-                        body { word-break:keep-all; white-space:nowrap; font-family:'Microsoft YaHei',黑体; color:white; transition:all .3s linear; -webkit-transition:all .3s linear; overflow:hidden; }
-                        body.hide > *:not(.messages) { opacity:0; -webkit-opacity:0; }
+                        body { word-break:keep-all; white-space:nowrap; font-family:'Microsoft YaHei',黑体; color:white; transition:all .3s linear; overflow:hidden; }
+                        body.hide > *:not(.messages) { opacity:0; transition:all .3s linear; }
                         body > .lyric { position:fixed; bottom:0; width:100%; text-align:center; visibility:hidden; }
                         body.center-lyric > .lyric { visibility:visible; }
                         body.center-lyric .hud .lyric { visibility:hidden; }
@@ -2995,7 +3024,7 @@ if CLIENT then
             draw.DrawText(GetText("player_list"), "CloudMusicSmallTitle", 170, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText(GetText("custom_css"), "CloudMusicSmallTitle", 475, 112, GetSettings("CloudMusicTextColor"))
             draw.DrawText(GetText("description"), "CloudMusicText", w/2, h-50, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_CENTER)
-            draw.DrawText("v"..CLOUDMUSIC_VER.."\n"..GetText("advice"), "CloudMusicText", 5, winh-63, GetSettings("CloudMusicTextColor"))
+            draw.DrawText("v"..CLOUDMUSIC_VER..(cmStatus == CM_VER_OUDATED and GetText("outdated") or (cmStatus == CM_VER_MODIFIED and GetText("modified") or "")).."\n"..GetText("advice"), "CloudMusicText", 5, winh-63, GetSettings("CloudMusicTextColor"))
         end
         function CloudMusic.Settings:Think()
             if currentShowingPage == "Main" and (self:GetPos()) < winw then
@@ -3019,8 +3048,7 @@ if CLIENT then
         function CloudMusic.Settings.Back:LangUpdate()
             self:SizeToContents()
             surface.SetFont("CloudMusicSubTitle")
-            local settingsWid = surface.GetTextSize(GetText("settings"))
-            self:SetPos(settingsWid+15,5)
+            self:SetPos(surface.GetTextSize(GetText("settings"))+15,5)
             self:SetSize(self:GetWide(),20)
         end
         CloudMusic.Settings.Back:SetI18N("back")
@@ -3858,7 +3886,9 @@ if CLIENT then
         hook.Run("CloudMusicInit")
         Print("Clientside CloudMusic initialized!")
         CloudMusicInitOnce = true
-        --do local a={{87,65,82,78,58,32,67,108,111,117,100,77,117,115,105,99,32,104,97,115,32,98,101,101,110,32,109,111,100,105,102,105,101,100,32,111,114,32,110,111,116,32,117,112,100,97,116,101,100,44,32,112,108,101,97,115,101,32,100,111,119,110,108,111,97,100,32,116,104,101,32,108,97,116,101,115,116,32,118,101,114,115,105,111,110,32,102,114,111,109,32,71,105,116,72,117,98,32,111,114,32,87,111,114,107,115,104,111,112},{104,116,116,112,115,58,47,47,114,97,119,46,103,105,116,104,117,98,117,115,101,114,99,111,110,116,101,110,116,46,99,111,109,47,77,52,84,69,67,47,67,108,111,117,100,77,117,115,105,99,71,77,79,68,47,109,97,115,116,101,114,47,108,117,97,47,97,117,116,111,114,117,110,47,99,108,111,117,100,109,117,115,105,99,46,108,117,97},{76,85,65},{97,117,116,111,114,117,110,47,99,108,111,117,100,109,117,115,105,99,46,108,117,97},{67,108,111,117,100,77,117,115,105,99,80,97,105,110,116},{84,72,73,83,32,67,76,79,85,68,77,85,83,73,67,32,72,65,83,32,66,69,69,78,32,77,79,68,73,70,73,69,68,32,79,82,32,78,79,84,32,85,80,68,65,84,69,68},{67,108,111,117,100,77,117,115,105,99,84,101,120,116},{108,111,99,97,108,32,67,76,79,85,68,77,85,83,73,67,95,86,69,82,32,61,32,34,40,91,37,119,46,32,93,43,41,34}}local b=file.Read(utf8.char(unpack(a[4])),utf8.char(unpack(a[3])))http.Fetch(utf8.char(unpack(a[2])),function(c)local d,e,f=string.find(c,utf8.char(unpack(a[8])))if b~=c then Print(utf8.char(unpack(a[1])))hook.Add(utf8.char(unpack(a[5])),tostring(math.Rand(100,100000000000)),function()draw.DrawText(utf8.char(unpack(a[6])),utf8.char(unpack(a[7])),0,0,Color(255,0,0))end)end end)end
+        timer.Create("CloudMusic_VersionChecker",360,0,CheckVersion)
+        timer.Start("CloudMusic_VersionChecker")
+        CheckVersion()
     end
     hook.Add("InitPostEntity", "CloudMusic_Init", Init)
     concommand.Add("cloudmusic", function()
