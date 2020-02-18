@@ -785,13 +785,13 @@ if CLIENT then
         local function CheckVersion()
             Print("Checking Cloud Music version...")
             local lua = file.Read("autorun/cloudmusic.lua","LUA")
-            local hash = util.CRC(lua)
             http.Fetch("https://cm.luotianyi.me/version.php",function(body)
                 local json = util.JSONToTable(body)
+                PrintTable(json)
                 if json["version"] ~= CLOUDMUSIC_VER then
                     Print("CloudMusic is outdated, please update to latest version")
                     cmStatus = CM_VER_OUDATED
-                elseif json["hash"] ~= hash then
+                elseif json["content"] ~= lua then
                     Print("CloudMusic is modified, this copy of Cloud Music won't get support of developer")
                     cmStatus = CM_VER_MODIFIED
                 else
