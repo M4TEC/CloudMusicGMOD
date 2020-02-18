@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200218.01" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200218.02" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -119,7 +119,7 @@ if CLIENT then
             ["center_lyric"] = "歌词置于游戏界面底部中央",
             ["hud_pos"] = "HUD位置",
             ["use_server_link"] = "使用服务器获取链接（VIP歌曲相关）",
-            ["use_server_link_tip"] = "听VIP歌曲需勾选并登录网易云VIP账号而且没有网易云VIP的玩家无法听见VIP歌曲外放",
+            ["use_server_link_tip"] = "听VIP歌曲需勾选并登录网易云VIP账号",
             ["hud_text_shadow"] = "HUD文字阴影",
             ["ui_color"] = "界面颜色",
             ["player_list"] = "玩家列表",
@@ -280,7 +280,7 @@ if CLIENT then
             ["center_lyric"] = "歌詞置中",
             ["hud_pos"] = "HUD位置",
             ["use_server_link"] = "使用伺服器取得鏈結（VIP歌曲相關）",
-            ["use_server_link_tip"] = "聽VIP曲目需勾選並登錄網易雲VIP帳號，沒有網易雲VIP的玩家無法聽見VIP歌曲外放",
+            ["use_server_link_tip"] = "聽VIP曲目需勾選並登錄網易雲VIP帳號",
             ["hud_text_shadow"] = "HUD文字陰影",
             ["ui_color"] = "視窗顏色",
             ["player_list"] = "玩家列表",
@@ -440,7 +440,7 @@ if CLIENT then
             ["center_lyric"] = "Display centered lyric in the bottom of the game",
             ["hud_pos"] = "HUD Position",
             ["use_server_link"] = "Use server to fetch link",
-            ["use_server_link_tip"] = "You need to turn on this and login in to your VIP Netease Cloud Music account to liten to VIP songs, and players that don't have VIP won't be able to listen VIP songs",
+            ["use_server_link_tip"] = "You need to turn on this and login in to your VIP Netease Cloud Music account to liten to VIP songs",
             ["hud_text_shadow"] = "HUD Text shadow",
             ["ui_color"] = "UI Color",
             ["player_list"] = "Player List",
@@ -985,9 +985,9 @@ if CLIENT then
                 end
             end
         end
-        local function GetSongURL(id,callback,finally)
+        local function GetSongURL(id,callback,finally,share)
             if GetSettings("CloudMusicUseServer") then
-                TokenRequest("https://cm.luotianyi.me/api/song/url?id="..id,function(body)
+                TokenRequest("https://cm.luotianyi.me/api/song/url?id="..id..(share == nil and "" or "&share="..share),function(body)
                     local result = util.JSONToTable(body)
                     if not result or not result["data"] or not result["data"][1] or not result["data"][1]["url"] then
                         if type(callback) == "function" then
@@ -1035,7 +1035,7 @@ if CLIENT then
                         end
                         ply.ChannelCreating = false
                     end)
-                end)
+                end,nil,ply:SteamID64())
             end
         end
         local function DisableListHeader(list)
