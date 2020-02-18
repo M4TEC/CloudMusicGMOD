@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200218.02" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200219" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -171,6 +171,8 @@ if CLIENT then
             ["clipboard_title"] = "复制成功",
             ["outdated"] = "（旧版本，不受支持）",
             ["modified"] = "（修改版，不受支持）",
+            ["cm_usable"] = "尝试使用Cloud Music",
+            ["instruction"] = "你可以在聊天框输入!cm或!cloudmusic打开网易云音乐播放器\n或者按下Alt+↓使用快捷键打开",
             ["verbose_help"] = "启用网易云播放器啰嗦模式"
         },
         ["zh-TW"] = {
@@ -331,6 +333,8 @@ if CLIENT then
             ["clipboard_title"] = "複製成功",
             ["outdated"] = "（舊版本，不受支持）",
             ["modified"] = "（修改版，不受支持）",
+            ["cm_usable"] = "嘗試使用Cloud Music",
+            ["instruction"] = "你可以在聊天框輸入!cm或!cloudmusic打開網易云音樂播放器\n或者按下Alt+↓使用快捷鍵打開",
             ["verbose_help"] = "啟用網易雲播放器囉嗦模式"
         },
         ["en"] = {
@@ -491,6 +495,8 @@ if CLIENT then
             ["clipboard_title"] = "Copy success",
             ["outdated"] = " (Outdated Version, No support provided)",
             ["modified"] = " (Modified Version, No support provided)",
+            ["cm_usable"] = "Try to use Cloud Music",
+            ["instruction"] = "You can type !cm or !cloudmusic in chatbox to open Cloud Music player\nor press Alt+↓ to open it with shortcut keys",
             ["verbose_help"] = "Enable verbose mode of Cloud Music player"
         }
     }
@@ -646,6 +652,7 @@ if CLIENT then
         local transLrcStartPos = 1
         local errorCount = 0
         local buffering = false
+        local playerNoticed = false
         local userDetail = {}
         local channelPlayers = {}
         Print("Variables set up")
@@ -3746,6 +3753,12 @@ if CLIENT then
                         end
                     end
                 end
+            end
+            if not playerNoticed then
+                timer.Simple(math.Rand(2,10),function()
+                    AddMessage(GetText("instruction"),GetText("cm_usable"))
+                end)
+                playerNoticed = true
             end
         end)
         hook.Add("PlayerStartVoice","CloudMusic_PlayerStartVoice",function()
