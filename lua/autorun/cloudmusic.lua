@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200219" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200222" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -639,7 +639,6 @@ if CLIENT then
             return value
         end
         local winw,winh = ScrW()*0.8,ScrH()*0.7
-        local targetOpacity = 0
         local isDragging = false
         local isProgDragging = false
         local isVolDragging = false
@@ -655,6 +654,8 @@ if CLIENT then
         local playerNoticed = false
         local userDetail = {}
         local channelPlayers = {}
+        local animationTime = 0.3 -- in seconds
+        local lastShortcutKeyTime = 0
         Print("Variables set up")
         local I18N_TEXT = 0
         local I18N_PLACEHOLDER = 1
@@ -682,8 +683,8 @@ if CLIENT then
         end
         local vgui = vgui
         vgui.__oldCreate = vgui.__oldCreate or vgui.Create
-        function vgui.Create(c,p,n,...)
-            local r = vgui.__oldCreate(c,p,n,...)
+        function vgui.Create(...)
+            local r = vgui.__oldCreate(...)
             function r:SetI18N(strname,type)
                 if self.I18Name == strname and self.I18NType == (type or I18N_TEXT) then return end
                 if not table.HasValue(I18N_LIST,self) then
@@ -695,6 +696,59 @@ if CLIENT then
             end
             function r:RemoveI18N()
                 table.RemoveByValue(I18N_LIST, self)
+            end
+            r.DermaSetTooltip = r.SetTooltip
+            function r:SetTooltip(str)
+                if IsValid(self.TooltipPanel) then
+                    self.TooltipPanel:Remove()
+                end
+                local panel = vgui.Create("DPanel",CloudMusic)
+                local text = vgui.Create("DLabel",panel)
+                text:SetText(str)
+                text:SetFont("CloudMusicText")
+                text:SizeToContents()
+                text:SetPos(2.5,0)
+                panel:SetSize(5+text:GetSize(),select(2,text:GetSize()))
+                function panel:Paint()
+                    local alpha = self:GetAlpha()
+                    if alpha == 0 then
+                        self:SetVisible(false) 
+                    end
+                    surface.SetDrawColor(0,0,0)
+                    DisableClipping(true)
+                    surface.DrawRect(-1, -1, self:GetSize()+2, select(2,self:GetSize())+2)
+                    DisableClipping(false)
+                    surface.SetDrawColor(255,255,255)
+                    surface.DrawRect(0, 0, self:GetSize(), select(2,self:GetSize()))
+                    if r:IsHovered() then
+                        if alpha ~= 255 then
+                            if GetSettings("CloudMusicAnimation") then
+                                local speed = 255/animationTime
+                                self:SetAlpha(alpha + speed * FrameTime())
+                                if self:GetAlpha() > 255 then
+                                    self:SetAlpha(255)
+                                end
+                            else
+                                self:SetAlpha(255)
+                            end
+                        end
+                    else
+                        if alpha ~= 0 then
+                            if GetSettings("CloudMusicAnimation") then
+                                local speed = 255/animationTime
+                                self:SetAlpha(alpha - speed * FrameTime())
+                                if self:GetAlpha() < 0 then
+                                    self:SetAlpha(0)
+                                end
+                            else
+                                self:SetAlpha(0)
+                            end
+                        end
+                    end
+                end
+                panel:SetVisible(false)
+                panel.IsTooltip = true
+                self.TooltipPanel = panel
             end
             return r
         end
@@ -1115,12 +1169,19 @@ if CLIENT then
             function CloudMusic.Overlay:Think()
                 if GetSettings("CloudMusicAnimation") then
                     if not self.IsHiding and self:GetAlpha() < 76.5 then
-                        self:SetAlpha(self:GetAlpha()+76.5/10)
+                        local alpha = self:GetAlpha()
+                        local speed = 76.5/animationTime
+                        self:SetAlpha(alpha + speed * FrameTime())
+                        if self:GetAlpha() > 76.5 then
+                            self:SetAlpha(76.5)
+                        end
                     elseif self.IsHiding then
                         if self:GetAlpha() <= 0 then
                             self:Remove()
                         else
-                            self:SetAlpha(self:GetAlpha()-76.5/10)
+                            local alpha = self:GetAlpha()
+                            local speed = 76.5/animationTime
+                            self:SetAlpha(alpha - speed * FrameTime())
                         end
                     end
                 end
@@ -1246,8 +1307,49 @@ if CLIENT then
                 end)
             end
         end
+        local function ColorEqual(a,b)
+            if a.r == b.r and a.g == b.g and a.b == b.b then return true end
+            return false
+        end
+        local function UnpackColor(c)
+            return c.r,c.g,c.b
+        end
         local function ButtonPaint(self,w,h)
-            draw.RoundedBox(3, 0, 0, w, h, (input.IsMouseDown(MOUSE_LEFT) and self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonActivateColor") or ((self:IsHovered() and not self:GetDisabled()) and GetSettings("CloudMusicButtonHoverColor") or GetSettings("CloudMusicButtonColor")))
+            if self.lastColor == nil or self.color == nil or self._color == nil then
+                self.lastColor = GetSettings("CloudMusicButtonColor")
+                self.color = GetSettings("CloudMusicButtonColor")
+                self._color = GetSettings("CloudMusicButtonColor")
+            end
+            local newColor = self.color
+            if input.IsMouseDown(MOUSE_LEFT) and self:IsHovered() and not self:GetDisabled() then
+                newColor = GetSettings("CloudMusicButtonActivateColor")
+            elseif self:IsHovered() and not self:GetDisabled() then
+                newColor = GetSettings("CloudMusicButtonHoverColor")
+            else
+                newColor = GetSettings("CloudMusicButtonColor")
+            end
+            if not ColorEqual(self.color,newColor) then
+                self.lastColor = self.color
+                self.color = newColor
+            end
+            if not ColorEqual(self.color,self._color) then
+                if GetSettings("CloudMusicAnimation") then
+                    local r,g,b = UnpackColor(self._color)
+                    local rspd = (self.color.r - self.lastColor.r) / animationTime
+                    local gspd = (self.color.g - self.lastColor.g) / animationTime
+                    local bspd = (self.color.b - self.lastColor.b) / animationTime
+                    self._color = Color(r + rspd * FrameTime(),g + gspd * FrameTime(),b + bspd * FrameTime())
+                    local r,g,b = UnpackColor(self._color)
+                    local nr,ng,nb = UnpackColor(self.color)
+                    if (rspd > 0 and r > nr) or (rspd < 0 and r < nr) then r = nr end
+                    if (gspd > 0 and g > ng) or (gspd < 0 and g < ng) then g = ng end
+                    if (bspd > 0 and b > nb) or (bspd < 0 and b < nb) then b = nb end
+                    self._color = Color(r,g,b)
+                else
+                    self._color = self.color
+                end
+            end
+            draw.RoundedBox(3, 0, 0, w, h, self._color)
         end
         local function SetTopFormsDisabled(disabled)
             CloudMusic.SonglistForm.Input:SetDisabled(disabled)
@@ -1293,19 +1395,21 @@ if CLIENT then
         CloudMusic:SetTitle("")
         function CloudMusic:Toggle()
             if self:IsVisible() then
-                targetOpacity = 0
-                if not GetSettings("CloudMusicAnimation") then
+                if GetSettings("CloudMusicAnimation") then
+                    self.Showing = false
+                else
                     self:SetAlpha(0)
                     self:SetVisible(false)
                 end
             else
+                self:Center()
                 self.Settings.Playerlist:SyncBlacklist()
                 self.Playlist:Sync()
                 self:MakePopup()
                 self:SetVisible(true)
-                targetOpacity = 255
                 if GetSettings("CloudMusicAnimation") then
                     self:SetAlpha(1)
+                    self.Showing = true
                 else
                     self:SetAlpha(255)
                 end
@@ -1314,7 +1418,49 @@ if CLIENT then
         function CloudMusic:GetVersion()
             return CLOUDMUSIC_VER
         end
+        local lastHoverPanel = nil
         function CloudMusic:Paint(w,h)
+            if GetSettings("CloudMusicAnimation") then
+                do
+                    local alpha = self:GetAlpha()
+                    local speed = 255/animationTime
+                    if self.Showing then
+                        self:SetAlpha(alpha + speed * FrameTime())
+                        if self:GetAlpha() > 255 then
+                            self:SetAlpha(255)
+                        end
+                    else
+                        self:SetAlpha(alpha - speed * FrameTime())
+                        if self:GetAlpha() < 0 then
+                            self:SetAlpha(0)
+                            self:SetVisible(false)
+                        end
+                    end
+                end
+                do
+                    local speed = winw/animationTime
+                    local move = speed * FrameTime()
+                    if currentShowingPage == "Settings" then
+                        self.Body:SetPos(self.Body:GetPos() - move,30)
+                        self.Settings:SetPos(self.Settings:GetPos() - move,30)
+                        if self.Body:GetPos() < -winw then self.Body:SetPos(-winw,30) end
+                        if self.Settings:GetPos() < 0 then self.Settings:SetPos(0,30) end
+                    elseif currentShowingPage == "Main" and pos ~= 0 then
+                        self.Body:SetPos(self.Body:GetPos() + move,30)
+                        self.Settings:SetPos(self.Settings:GetPos() + move,30)
+                        if self.Body:GetPos() > 0 then self.Body:SetPos(0,30) end
+                        if self.Settings:GetPos() > winw then self.Settings:SetPos(winw,30) end
+                    end
+                end
+            else
+                if currentShowingPage == "Settings" then
+                    self.Body:SetPos(-winw,30)
+                    self.Settings:SetPos(0,30)
+                elseif currentShowingPage == "Main" and pos ~= 0 then
+                    self.Body:SetPos(0,30)
+                    self.Settings:SetPos(winw)
+                end
+            end
             draw.RoundedBoxEx(8, 0, 30, winw, winh-30, GetSettings("CloudMusicBackgroundColor"), false, false, true, true)
             draw.RoundedBoxEx(8, 0, 0, winw, 30, GetSettings("CloudMusicTitleBarColor"), true, true)
             draw.DrawText(GetText("title"), "CloudMusicTitle", 5, 3, GetSettings("CloudMusicTitleBarTextColor"))
@@ -1325,6 +1471,30 @@ if CLIENT then
             if msg ~= "" then
                 surface.SetFont("CloudMusicTitle")
                 draw.DrawText(msg, "CloudMusicText", surface.GetTextSize(GetText("title"))+5, 13, GetSettings("CloudMusicTitleBarTextColor"))
+            end
+            if IsValid(vgui.GetHoveredPanel()) then
+                local panel = vgui.GetHoveredPanel()
+                if panel.IsTooltip then return end
+                if IsValid(lastHoverPanel) then
+                    if panel.HoverTime ~= nil and lastHoverPanel == panel and SysTime() - panel.HoverTime >= 1 and IsValid(panel.TooltipPanel) then
+                        local cx,cy = self:CursorPos()
+                        panel.TooltipPanel:SetPos(cx+1,cy-select(2,panel.TooltipPanel:GetSize())-2)
+                        if not panel.TooltipPanel:IsVisible() then
+                            if GetSettings("CloudMusicAnimation") then
+                                panel.TooltipPanel:SetAlpha(1)
+                            else
+                                panel.TooltipPanel:SetAlpha(255)
+                            end
+                        end
+                        panel.TooltipPanel:SetVisible(true)
+                    elseif lastHoverPanel ~= panel then
+                        lastHoverPanel.HoverTime = nil
+                    end
+                end
+                if panel.HoverTime == nil then
+                    panel.HoverTime = SysTime()
+                end
+                lastHoverPanel = panel
             end
             hook.Run("CloudMusicPaint", self)
         end
@@ -1340,22 +1510,6 @@ if CLIENT then
                 isVolDragging = false
                 SendSyncData()
             end
-            if GetSettings("CloudMusicAnimation") then
-                if self:GetAlpha() == 0 and targetOpacity == 0 then
-                    self:SetVisible(false)
-                end
-                if self:GetAlpha() > targetOpacity then
-                    self:SetAlpha(self:GetAlpha()-25.5)
-                    if self:GetAlpha() < 0 then
-                        self:SetAlpha(0)
-                    end
-                elseif self:GetAlpha() < targetOpacity then
-                    self:SetAlpha(self:GetAlpha()+25.5)
-                    if self:GetAlpha() > 255 then
-                        self:SetAlpha(255)
-                    end
-                end
-            end
             if isDragging then
                 local cx,cy = gui.MouseX(),gui.MouseY()
                 local nx,ny = cx-dragStartX,cy-dragStartY
@@ -1367,9 +1521,28 @@ if CLIENT then
             end
         end
         function CloudMusic:OnKeyCodePressed(key)
+            if SysTime() - lastShortcutKeyTime <= 0.5 then return end
             if input.IsButtonDown(KEY_LALT) then
                 if input.IsButtonDown(KEY_DOWN) then
                     self:Toggle()
+                    lastShortcutKeyTime = SysTime()
+                else
+                    if not IsValid(self.CurrentChannel) or not self.CurrentPlaying then return end
+                    if input.IsKeyDown(KEY_LEFT) then
+                        self:Prev()
+                        lastShortcutKeyTime = SysTime()
+                    elseif input.IsKeyDown(KEY_RIGHT) then
+                        self:Next()
+                        lastShortcutKeyTime = SysTime()
+                    elseif input.IsKeyDown(KEY_UP) then
+                        if self.CurrentChannel:GetState() == GMOD_CHANNEL_PLAYING or self.CurrentChannel:GetState() == GMOD_CHANNEL_STALLED then
+                            self.CurrentChannel:Pause()
+                            lastShortcutKeyTime = SysTime()
+                        else
+                            self.CurrentChannel:Play()
+                            lastShortcutKeyTime = SysTime()
+                        end
+                    end
                 end
             end
         end
@@ -1421,9 +1594,12 @@ if CLIENT then
         CloudMusic.Login.Paint = ButtonPaint
         function CloudMusic.Login:DoClick()
             ShowOverlay()
+            local x = winw/2-350/2
+            local y = (winh-30)/2-400/2+30
+            local oy = winh-1
             CloudMusic.LoginPrompt = vgui.Create("DPanel",CloudMusic)
             CloudMusic.LoginPrompt:SetZPos(2)
-            CloudMusic.LoginPrompt:SetPos(winw/2-350/2,(winh-30)/2-400/2+30)
+            CloudMusic.LoginPrompt:SetPos(x,oy)
             CloudMusic.LoginPrompt:SetSize(350,400)
             function CloudMusic.LoginPrompt:Think()
                 if self.Mode == "Email" then
@@ -1433,6 +1609,21 @@ if CLIENT then
                     self.Username:SetPos(35,75)
                     self.Username:SetSize(350-45,20)
                 end
+            end
+            CloudMusic.LoginPrompt._Paint = CloudMusic.LoginPrompt.Paint
+            function CloudMusic.LoginPrompt:Paint(...)
+                self:_Paint(...)
+                local cx,cy = self:GetPos()
+                if cy ~= y then
+                    if GetSettings("CloudMusicAnimation") then
+                        local speed = (oy-y)/animationTime
+                        self:SetPos(x,cy - speed * FrameTime())
+                        if select(2,self:GetPos()) < y then self:SetPos(x,y) end
+                    else
+                        self:SetPos(x,y)
+                    end
+                end
+                if select(2,self:GetPos()) <= -select(2,self:GetSize()) then self:Remove() end
             end
             CloudMusic.LoginPrompt.Title = vgui.Create("DLabel",CloudMusic.LoginPrompt)
             CloudMusic.LoginPrompt.Title:SetI18N("login_title")
@@ -1511,6 +1702,7 @@ if CLIENT then
                 CloudMusic.LoginPrompt.Username:SetDisabled(true)
                 CloudMusic.LoginPrompt.Password:SetDisabled(true)
                 CloudMusic.LoginPrompt.Privacy.Select:SetDisabled(true)
+                CloudMusic.LoginPrompt.ToggleMode:SetDisabled(true)
                 self:SetDisabled(true)
                 Print("Logging in...")
                 if CloudMusic.LoginPrompt.Mode == "Email" then
@@ -1538,6 +1730,7 @@ if CLIENT then
                         CloudMusic.LoginPrompt.Username:SetDisabled(false)
                         CloudMusic.LoginPrompt.Password:SetDisabled(false)
                         CloudMusic.LoginPrompt.Privacy.Select:SetDisabled(false)
+                        CloudMusic.LoginPrompt.ToggleMode:SetDisabled(false)
                         self:SetDisabled(false)
                     end)
                 else
@@ -1565,6 +1758,7 @@ if CLIENT then
                         CloudMusic.LoginPrompt.Username:SetDisabled(false)
                         CloudMusic.LoginPrompt.Password:SetDisabled(false)
                         CloudMusic.LoginPrompt.Privacy.Select:SetDisabled(false)
+                        CloudMusic.LoginPrompt.ToggleMode:SetDisabled(false)
                         self:SetDisabled(false)
                     end)
                 end
@@ -1574,7 +1768,8 @@ if CLIENT then
             CloudMusic.LoginPrompt.Cancel:SetSize(350-20,20)
             CloudMusic.LoginPrompt.Cancel:SetI18N("cancel")
             function CloudMusic.LoginPrompt.Cancel:DoClick()
-                CloudMusic.LoginPrompt:Remove()
+                oy = select(2,CloudMusic.LoginPrompt:GetPos())
+                y = -select(2,CloudMusic.LoginPrompt:GetSize())
                 HideOverlay()
             end
             SetUISkin(CloudMusic.LoginPrompt)
@@ -1608,10 +1803,28 @@ if CLIENT then
         CloudMusic.UserInfo.Paint = ButtonPaint
         function CloudMusic.UserInfo:DoClick()
             ShowOverlay()
+            local x = winw/2-winw/4
+            local y = (winh-30)/2-300/2+30
+            local oy = winh-1
             CloudMusic.UInfo = vgui.Create("DPanel",CloudMusic)
             CloudMusic.UInfo:SetZPos(2)
-            CloudMusic.UInfo:SetPos(winw/2-winw/4,(winh-30)/2-300/2+30)
+            CloudMusic.UInfo:SetPos(x,oy)
             CloudMusic.UInfo:SetSize(winw/2,300)
+            CloudMusic.UInfo._Paint = CloudMusic.UInfo.Paint
+            function CloudMusic.UInfo:Paint(...)
+                self:_Paint(...)
+                local cx,cy = self:GetPos()
+                if cy ~= y then
+                    if GetSettings("CloudMusicAnimation") then
+                        local speed = (oy-y)/animationTime
+                        self:SetPos(x,cy - speed * FrameTime())
+                        if select(2,self:GetPos()) < y then self:SetPos(x,y) end
+                    else
+                        self:SetPos(x,y)
+                    end
+                end
+                if select(2,self:GetPos()) <= -select(2,self:GetSize()) then self:Remove() end
+            end
             CloudMusic.UInfo.Avatar = vgui.Create("DHTML", CloudMusic.UInfo)
             CloudMusic.UInfo.Avatar:SetPos(5,5)
             CloudMusic.UInfo.Avatar:SetSize(64,64)
@@ -1645,7 +1858,7 @@ if CLIENT then
                 Print("Signing in with Netease Android client")
                 TokenRequest("https://cm.luotianyi.me/api/daily_signin?t="..os.time(),function(body)
                     local json = util.JSONToTable(body)
-                    if json["code"] == 200 then
+                    if json and json["code"] == 200 then
                         SetDMUISkin(Derma_Message(GetText("signinsuccess",{"point",json["point"]}), GetText("signin"), GetText("ok")))
                     else
                         SetDMUISkin(Derma_Message(json["msg"], GetText("signin"), GetText("ok")))
@@ -1663,7 +1876,8 @@ if CLIENT then
             CloudMusic.UInfo.Close:SetSize(winw/2-10,20)
             CloudMusic.UInfo.Close:SetI18N("close")
             function CloudMusic.UInfo.Close:DoClick()
-                CloudMusic.UInfo:Remove()
+                oy = select(2,CloudMusic.UInfo:GetPos())
+                y = -select(2,CloudMusic.UInfo:GetSize())
                 HideOverlay()
             end
             Print("Fetching user details")
@@ -1699,22 +1913,6 @@ if CLIENT then
         CloudMusic.Body:SetSize(winw,winh-30)
         function CloudMusic.Body:Paint(w,h)
             draw.DrawText("Made by Texas", "CloudMusicText", winw-5, 0, Color(202,202,202), TEXT_ALIGN_RIGHT)
-        end
-        function CloudMusic.Body:Think()
-            if currentShowingPage == "Settings" and (self:GetPos()) > -winw then
-                if GetSettings("CloudMusicAnimation") then
-                    self:SetPos((self:GetPos()-slideAnimPix),30)
-                else
-                    self:SetPos(-winw,30)
-                end
-            elseif currentShowingPage == "Main" and (self:GetPos()) ~= 0 then
-                if GetSettings("CloudMusicAnimation") then
-                    self:SetPos((self:GetPos()+slideAnimPix),30)
-                    if (self:GetPos()) > 0 then self:SetPos(0,30) end
-                else
-                    self:SetPos(0,30)
-                end
-            end
         end
         CloudMusic.SettingsButton = vgui.Create("DButton",CloudMusic.Body)
         CloudMusic.SettingsButton:SetColor(Color(255,255,255))
@@ -2240,7 +2438,7 @@ if CLIENT then
             end)
         end
         CloudMusic.PrevPage.Paint = ButtonPaint
-        function CloudMusic:Play(song)
+        function CloudMusic:Play(song,callback)
             if buffering or song == nil then return end
             if type(song) == "number" then
                 if #self.Playlist.Songs == 0 then
@@ -2298,12 +2496,13 @@ if CLIENT then
                     end
                     SendSyncData()
                     SendInfoData()
+                    if type(callback) == "function" then callback() end
                 end)
             end,function()
                 buffering = false
             end)
         end
-        function CloudMusic:Next()
+        function CloudMusic:Next(callback)
             if #self.Playlist.Songs == 0 then return end
             if self.CurrentPlaying then
                 local found = false
@@ -2311,22 +2510,22 @@ if CLIENT then
                     local song = self.Playlist.Songs[i]
                     if song.ID == self.CurrentPlaying.ID then
                         if i == #self.Playlist.Songs then
-                            self:Play(1)
+                            self:Play(1,callback)
                         else
-                            self:Play(i+1)
+                            self:Play(i+1,callback)
                         end
                         found = true
                         break
                     end
                 end
                 if not found then
-                    self:Play(1)
+                    self:Play(1,callback)
                 end
             else
-                self:Play()
+                self:Play(nil,callback)
             end
         end
-        function CloudMusic:Prev()
+        function CloudMusic:Prev(callback)
             if #self.Playlist.Songs == 0 then return end
             if self.CurrentPlaying then
                 local found = false
@@ -2334,19 +2533,19 @@ if CLIENT then
                     local song = self.Playlist.Songs[i]
                     if song.ID == self.CurrentPlaying.ID then
                         if i == 1 then
-                            self:Play(#self.Playlist.Songs)
+                            self:Play(#self.Playlist.Songs,callback)
                         else
-                            self:Play(i-1)
+                            self:Play(i-1,callback)
                         end
                         found = true
                         break
                     end
                 end
                 if not found then
-                    self:Play(1)
+                    self:Play(1,callback)
                 end
             else
-                self:Play()
+                self:Play(nil,callback)
             end
         end
         CloudMusic.Player = vgui.Create("DPanel", CloudMusic.Body)
@@ -2386,9 +2585,9 @@ if CLIENT then
             draw.RoundedBox(2.5, self:GetWide()-100, self:GetTall()-9.5, 100, 5, Color(226,226,226))
             draw.RoundedBox(2.5, self:GetWide()-100, self:GetTall()-9.5, CloudMusic.Volume*100, 5, GetSettings("CloudMusicBarColor"))
             if buffering then
-                draw.DrawText(GetText("trying_play"), "CloudMusicText", self.Volumeenhance:IsVisible() and self.Volumeenhance:GetPos()-5 or self.CopyLink:GetPos()-5, 3, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
+                draw.DrawText(GetText("trying_play"), "CloudMusicText", self.VolumeEnhance:IsVisible() and self.VolumeEnhance:GetPos()-5 or self.CopyLink:GetPos()-5, 3, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
             elseif IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_STALLED then
-                draw.DrawText(GetText("buffering"), "CloudMusicText", self.Volumeenhance:IsVisible() and self.Volumeenhance:GetPos()-5 or self.CopyLink:GetPos()-5, 3, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
+                draw.DrawText(GetText("buffering"), "CloudMusicText", self.VolumeEnhance:IsVisible() and self.VolumeEnhance:GetPos()-5 or self.CopyLink:GetPos()-5, 3, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_RIGHT)
             end
         end
         function CloudMusic.Player:OnMousePressed(key)
@@ -2441,7 +2640,7 @@ if CLIENT then
                 self.Next:SetVisible(false)
                 self.Mode:SetVisible(false)
                 self.CopyLink:SetVisible(false)
-                self.Volumeenhance:SetVisible(false)
+                self.VolumeEnhance:SetVisible(false)
             elseif not (self.Prev:IsVisible() or self.PlayPause:IsVisible() or self.Next:IsVisible() or self.Mode:IsVisible() or self.Mode:IsVisible() or self.CopyLink:IsVisible()) then
                 self.Prev:SetVisible(true)
                 self.PlayPause:SetVisible(true)
@@ -2450,7 +2649,7 @@ if CLIENT then
                 self.CopyLink:SetVisible(true)
             end
             if CloudMusic.Volume >= 1 and CloudMusic.CurrentPlaying ~= nil then
-                self.Volumeenhance:SetVisible(true)
+                self.VolumeEnhance:SetVisible(true)
             end
         end
         CloudMusic.Player.Prev = vgui.Create("DButton",CloudMusic.Player)
@@ -2556,25 +2755,25 @@ if CLIENT then
             SetClipboardText("https://music.163.com/song/media/outer/url?id="..CloudMusic.CurrentPlaying.ID..".mp3")
         end
         CloudMusic.Player.CopyLink.Paint = ButtonPaint
-        CloudMusic.Player.Volumeenhance = vgui.Create("DButton",CloudMusic.Player)
-        function CloudMusic.Player.Volumeenhance:LangUpdate()
+        CloudMusic.Player.VolumeEnhance = vgui.Create("DButton",CloudMusic.Player)
+        function CloudMusic.Player.VolumeEnhance:LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(CloudMusic.Player.CopyLink:GetPos()-self:GetWide()-5,0)
         end
-        CloudMusic.Player.Volumeenhance.DoClick = function()
-            if not GetSettings("CloudMusicVolumeenhance") then
-                SetSettings("CloudMusicVolumeenhance",true)
+        CloudMusic.Player.VolumeEnhance.DoClick = function()
+            if not GetSettings("CloudMusicVolumeEnhance") then
+                SetSettings("CloudMusicVolumeEnhance",true)
             else
                 CloudMusic.Volume = 1
                 SetSettings("CloudMusicVolume",1)
-                SetSettings("CloudMusicVolumeenhance",false)
+                SetSettings("CloudMusicVolumeEnhance",false)
             end
         end
-        function CloudMusic.Player.Volumeenhance:Think()
-            self:SetI18N(GetSettings("CloudMusicVolumeenhance") and "disable_volume_enhance" or "enable_volume_enhance")
+        function CloudMusic.Player.VolumeEnhance:Think()
+            self:SetI18N(GetSettings("CloudMusicVolumeEnhance") and "disable_volume_enhance" or "enable_volume_enhance")
             if CloudMusic.Volume >= 1 then
-                if GetSettings("CloudMusicVolumeenhance") and CloudMusic.Volume ~= 2 then
+                if GetSettings("CloudMusicVolumeEnhance") and CloudMusic.Volume ~= 2 then
                     CloudMusic.Volume = 2
                     SetSettings("CloudMusicVolume",2)
                 end
@@ -2582,10 +2781,12 @@ if CLIENT then
                 self:SetVisible(false)
             end
         end
-        CloudMusic.Player.Volumeenhance.Paint = ButtonPaint
-        CloudMusic.HUD = vgui.Create("DHTML")
-        CloudMusic.HUD:ParentToHUD()
+        CloudMusic.Player.VolumeEnhance.Paint = ButtonPaint
+        CloudMusic.HUD = vgui.Create("DHTML",vgui.GetWorldPanel())
+        CloudMusic.HUD:SetPos(0,0)
         CloudMusic.HUD:SetSize(ScrW(),ScrH())
+        CloudMusic.HUD:SetZPos(10)
+        CloudMusic.HUD:Dock(FILL)
         CloudMusic.HUD:SetHTML([[
             <html>
                 <head>
@@ -3032,22 +3233,6 @@ if CLIENT then
             draw.DrawText(GetText("description"), "CloudMusicText", w/2, h-50, GetSettings("CloudMusicTextColor"), TEXT_ALIGN_CENTER)
             draw.DrawText("v"..CLOUDMUSIC_VER..(cmStatus == CM_VER_OUDATED and GetText("outdated") or (cmStatus == CM_VER_MODIFIED and GetText("modified") or "")).."\n"..GetText("advice"), "CloudMusicText", 5, winh-63, GetSettings("CloudMusicTextColor"))
         end
-        function CloudMusic.Settings:Think()
-            if currentShowingPage == "Main" and (self:GetPos()) < winw then
-                if GetSettings("CloudMusicAnimation") then
-                    self:SetPos((self:GetPos())+slideAnimPix,30)
-                else
-                    self:SetPos(winw,30)
-                end
-            elseif currentShowingPage == "Settings" and (self:GetPos()) ~= 0 then
-                if GetSettings("CloudMusicAnimation") then
-                    self:SetPos((self:GetPos())-slideAnimPix,30)
-                    if (self:GetPos()) < 0 then self:SetPos(0,30) end
-                else
-                    self:SetPos(0,30)
-                end
-            end
-        end
         CloudMusic.Settings.Back = vgui.Create("DButton",CloudMusic.Settings)
         CloudMusic.Settings.Back:SetPos(50,5)
         CloudMusic.Settings.Back:SetSize(30,20)
@@ -3249,9 +3434,27 @@ if CLIENT then
             local line = self:GetSelected()[1]
             local p = player.GetBySteamID64(line:GetColumnText(2))
             local w = vgui.Create("DPanel",CloudMusic)
+            local x = winw/2-(winw*0.8/2)
+            local y = winh/2-((winh-30)*0.9)/2
+            local oy = winh-1
             w:SetZPos(2)
             w:SetSize(winw*0.8,(winh-30)*0.9)
-            w:SetPos(winw/2-(winw*0.8/2),winh/2-((winh-30)*0.9)/2)
+            w:SetPos(xpcall(func, errorCallback, arguments),oy)
+            w._Paint = w.Paint
+            function w:Paint(...)
+                self:_Paint(...)
+                local cx,cy = self:GetPos()
+                if cy ~= y then
+                    if GetSettings("CloudMusicAnimation") then
+                        local speed = (oy-y)/animationTime
+                        self:SetPos(x,cy - speed * FrameTime())
+                        if select(2,self:GetPos()) < y then self:SetPos(x,y) end
+                    else
+                        self:SetPos(x,y)
+                    end
+                end
+                if select(2,self:GetPos()) <= -select(2,self:GetSize()) then self:Remove() end
+            end
             w.Avatar = vgui.Create("AvatarImage",w)
             w.Avatar:SetPos(5,5)
             w.Avatar:SetSize(64,64)
@@ -3284,8 +3487,9 @@ if CLIENT then
             w.Close:SetSize(w:GetSize()-10,20)
             w.Close:SetI18N("close")
             function w.Close:DoClick()
+                oy = select(2,w:GetPos())
+                y = -select(2,w:GetSize())
                 HideOverlay()
-                w:Remove()
             end
             function w:UpdateInfo()
                 local stat = "no_info"
@@ -3621,7 +3825,7 @@ if CLIENT then
             end
             if input.IsMouseDown(MOUSE_LEFT) and not self.MousePressed and x >= self.WaifuPos["x"] and y >= self.WaifuPos["y"] and x <= self.WaifuPos["x"] + self.WaifuPos["w"] and y <= self.WaifuPos["y"] + self.WaifuPos["h"] and currentShowingPage == "Settings" then
                 self.MousePressed = true
-                sound.PlayURL("http://files.m4tec.org/index.php/s/apjmfZ7AasncR8A/download", "", function(station)
+                sound.PlayURL("https://cm.luotianyi.me/resources/cm-lty-nha.wav", "", function(station)
                     if IsValid(station) then
                         station:SetVolume(1)
                         station:Play()
@@ -3654,7 +3858,7 @@ if CLIENT then
                         transform:translate(-50%);
                         word-break:keep-all;
                         white-space:nowrap;
-                        -webkit-transition:all 1s ease-in-out;
+                        -webkit-transition:all .5s ease-in-out;
                         overflow:hidden;
                     }
                     .waifu > img {
@@ -3663,7 +3867,7 @@ if CLIENT then
                 </style>
                 <div class="waifu">
                     <span>作者的<strong>闺蜜</strong></span>
-                    <img src="https://files.m4tec.org/index.php/s/8zJ3zwCLsW2MTia/preview" id="lty"/>
+                    <img src="https://cm.luotianyi.me/resources/cm-czjy-lty.png" id="lty"/>
                 </div>
                 <script>
                     window.onmousedown = function() {return false;}
@@ -3678,7 +3882,7 @@ if CLIENT then
                     function showWaifu() {
                         var waifu = document.getElementsByClassName("waifu")[0];
                         var waifuText = waifu.querySelector("span");
-                        waifuText.style.maxWidth = waifu.clientWidth + "px";
+                        waifuText.style.maxWidth = waifuText.scrollWidth + "px";
                     }
                     function hideWaifu() {
                         var waifu = document.getElementsByClassName("waifu")[0];
@@ -3703,6 +3907,32 @@ if CLIENT then
                 Print("All HUD CSS rule removed")
                 CloudMusic.HUD:RunJavascript("removeAllCSS()");
             end,
+            ["SaveSession"] = function(name)
+                Print("Saving session as "..name.."...")
+                local sData = {
+                    ["playing"] = CloudMusic.CurrentPlaying,
+                    ["valid"] = IsValid(CloudMusic.CurrentChannel),
+                    ["channel"] = IsValid(CloudMusic.CurrentChannel) and {
+                        ["state"] = CloudMusic.CurrentChannel:GetState(),
+                        ["time"] = CloudMusic.CurrentChannel:GetTime()
+                    } or nil
+                }
+                file.Write("cloudmusic/sessions/"..name..".dat",util.TableToJSON(CloudMusic.CurrentPlaying))
+            end,
+            ["LoadSession"] = function(name)
+                Print("Loading session from "..name.."...")
+                local sData = util.JSONToTable(file.Read("cloudmusic/sessions/"..name..".dat"))
+                CloudMusic:Play(sData["playing"],function()
+                    if IsValid(CloudMusic.CurrentChannel) then
+                        CloudMusic.CurrentChannel:SetTime(sData["channel"]["time"])
+                        if sData["channel"]["state"] ~= GMOD_CHANNEL_PLAYING and sData["channel"]["state"] ~= GMOD_CHANNEL_STALLED then
+                            CloudMusic.CurrentChannel:Pause()
+                        end
+                    else
+                        CloudMusic.CurrentChannel:Pause()
+                    end
+                end)
+            end,
             ["BeforeChannelForceStop"] = function()
                 if IsValid(CloudMusic.CurrentChannel) then
                     didPlayerPaused = CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_PAUSED and CloudMusic.CurrentChannel:GetState() ~= GMOD_CHANNEL_STOPPED
@@ -3718,7 +3948,6 @@ if CLIENT then
         CloudMusic:SetAlpha(0)
         CloudMusic:SetVisible(false)
         InitUserInfo()
-        local lastShortcutKeyTime = 0
         hook.Add("PlayerSpawn","CloudMusic_PlayerSpawn",function()
             CloudMusic.Settings.Playerlist:SyncBlacklist()
             CloudMusic.Playlist:Sync()
@@ -3778,6 +4007,7 @@ if CLIENT then
             end
         end)
         hook.Add("Think","CloudMusic_Think",function()
+            CloudMusic.HUD:SetVisible(not gui.IsGameUIVisible())
             if IsValid(CloudMusic.CurrentChannel) and CloudMusic.CurrentChannel:GetTime() >= CloudMusic.CurrentChannel:GetLength()-1 and CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_STOPPED then
                 SongEnded()
             end
