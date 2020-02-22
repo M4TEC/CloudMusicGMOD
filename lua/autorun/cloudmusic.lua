@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200222" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200223" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -714,11 +714,11 @@ if CLIENT then
                     if alpha == 0 then
                         self:SetVisible(false) 
                     end
-                    surface.SetDrawColor(0,0,0)
+                    surface.SetDrawColor(0,0,0,alpha)
                     DisableClipping(true)
                     surface.DrawRect(-1, -1, self:GetSize()+2, select(2,self:GetSize())+2)
                     DisableClipping(false)
-                    surface.SetDrawColor(255,255,255)
+                    surface.SetDrawColor(255,255,255,alpha)
                     surface.DrawRect(0, 0, self:GetSize(), select(2,self:GetSize()))
                     if r:IsHovered() then
                         if alpha ~= 255 then
@@ -2815,22 +2815,22 @@ if CLIENT then
                         .song-info > .artist { font-size:12px; }
                         .hud .lyric > span:first-of-type { font-size:18px; }
                         .hud .lyric > span:last-of-type { font-size:12px; }
-                        .lyric > span { -webkit-transition:all .1s linear; opacity:1; }
+                        .lyric > span { transition:all .1s linear; opacity:1; -webkit-transition:all .1s linear; opacity:1; }
                         .hud.bottom-left .lyric, .hud.bottom-right .lyric { position: relative; height: 0; top: -85px; }
                         .hud.top-right .circle-bar, .hud.bottom-right .circle-bar { float: right; }
                         .hud.top-right .song-info, .hud.bottom-right .song-info { text-align: right; position: absolute; right: 41px; }
                         .hud.top-right .lyric, .hud.bottom-right .lyric { margin-top: 16px; }
                         .messages { position: fixed; top: 40vh; right: 0; width: 25vw; text-shadow: none; }
-                        .message { box-sizing: border-box; position: relative; color: white; width: 100%; min-height: 60px; padding: 10px; border-top-left-radius: 6px; border-bottom-left-radius: 6px; box-shadow: 0 0 6px #333; background-color: #6CF; margin-bottom: 20px; transition: all .3s linear; }
+                        .message { box-sizing: border-box; position: relative; color: white; width: 100%; min-height: 60px; padding: 10px; border-top-left-radius: 6px; border-bottom-left-radius: 6px; box-shadow: 0 0 6px #333; background-color: #6CF; margin-bottom: 20px; transition: all .3s linear; -webkit-transition: all .3s linear; }
                         .message.error { background-color: #d81e06; }
                         .message.success { background-color: #1afa29; }
                         .message.progress { background: transparent; overflow: hidden; }
-                        .message.progress::before { position: absolute; z-index: -1; top: 0; left: -46px; right: 0; height: 100%; content: ''; background: repeating-linear-gradient(55deg,#6cf 1px,#74d9ff 2px,#74d9ff 11px,#6cf 12px,#6cf 20px); animation-name: progress; animation-duration: 1s; animation-timing-function: linear; animation-iteration-count: infinite; }
+                        .message.progress::before { position: absolute; z-index: -1; top: 0; left: -46px; right: 0; height: 100%; content: ''; background: repeating-linear-gradient(55deg,#6cf 1px,#74d9ff 2px,#74d9ff 11px,#6cf 12px,#6cf 20px); animation-name: progress; -webkit-animation-name: progress; animation-duration: 1s; -webkit-animation-duration: 1s; animation-timing-function: linear; -webkit-animation-timing-function: linear; animation-iteration-count: infinite; -webkit-animation-iteration-count: infinite; }
                         .message .icon { width: 40px; height: 40px; position: absolute; top: 10px; left: 10px; }
                         .message .title { font-size: 20px; margin-left: 45px; white-space: normal; word-break: break-all; }
                         .message .content { font-size: 14px; margin-left: 45px; white-space: normal; word-break: break-all; }
-                        body { word-break:keep-all; white-space:nowrap; font-family:'Microsoft YaHei',黑体; color:white; transition:all .3s linear; overflow:hidden; }
-                        body.hide > *:not(.messages) { opacity:0; transition:all .3s linear; }
+                        body { word-break:keep-all; white-space:nowrap; font-family:'Microsoft YaHei',黑体; color:white; transition:all .3s linear; -webkit-transition:all .3s linear; overflow:hidden; }
+                        body.hide > *:not(.messages) { opacity:0; transition:all .3s linear; -webkit-transition:all .3s linear; }
                         body > .lyric { position:fixed; bottom:0; width:100%; text-align:center; visibility:hidden; }
                         body.center-lyric > .lyric { visibility:visible; }
                         body.center-lyric .hud .lyric { visibility:hidden; }
@@ -3092,7 +3092,9 @@ if CLIENT then
                             });
                         }
                         function removeProgress(name) {
-                            for (var msg of document.querySelectorAll(".message." + name)) {
+                            var msgs = document.querySelectorAll(".message." + name);
+                            for (var i = 0;i<msgs.length;i++) {
+                                var msg = msgs[i];
                                 msg.style.overflow = "hidden";
                                 msg.style.minHeight = "0";
                                 msg.style.height = "0";
