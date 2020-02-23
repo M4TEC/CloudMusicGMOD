@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200223" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200223.01" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -2235,7 +2235,7 @@ if CLIENT then
         function CloudMusic.Playlists:ShowMenu()
             local menu = DermaMenu(self)
             menu:AddOption(GetText("open"),function()
-                http.Fetch("http://music.163.com/api/playlist/detail?id="..self:GetSelected()[1]:GetColumnText("4"), function(json)
+                http.Fetch("http://music.163.com/api/playlist/detail?id="..self:GetSelected()[1]:GetColumnText(4), function(json)
                     local obj = util.JSONToTable(json)
                     if obj["code"] ~= 200 then
                         SetDMUISkin(Derma_Message(GetText("playlistfailed"), GetText("error"), GetText("ok")))
@@ -2249,7 +2249,7 @@ if CLIENT then
                 end, function()SetDMUISkin(Derma_Message(GetText("playlistfailed"), GetText("error"), GetText("ok")))end)
             end):SetIcon("icon16/transmit.png")
             menu:AddOption(GetText("add_playlist_to_playlist"),function()
-                http.Fetch("http://music.163.com/api/playlist/detail?id="..self:GetSelected()[1]:GetColumnText("4"), function(json)
+                http.Fetch("http://music.163.com/api/playlist/detail?id="..self:GetSelected()[1]:GetColumnText(4), function(json)
                     local obj = util.JSONToTable(json)
                     if obj["code"] ~= 200 then
                         SetDMUISkin(Derma_Message(GetText("playlistfailed"), GetText("error"), GetText("ok")))
