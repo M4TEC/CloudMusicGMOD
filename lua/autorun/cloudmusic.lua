@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200223.01" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200223.02" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -685,7 +685,7 @@ if CLIENT then
         vgui.__oldCreate = vgui.__oldCreate or vgui.Create
         function vgui.Create(...)
             local r = vgui.__oldCreate(...)
-            function r:SetI18N(strname,type)
+            function r:CM_SetI18N(strname,type)
                 if self.I18Name == strname and self.I18NType == (type or I18N_TEXT) then return end
                 if not table.HasValue(I18N_LIST,self) then
                     table.insert(I18N_LIST,self)
@@ -694,11 +694,10 @@ if CLIENT then
                 self.I18NType = type or I18N_TEXT
                 LanguageUpdate()
             end
-            function r:RemoveI18N()
+            function r:CM_RemoveI18N()
                 table.RemoveByValue(I18N_LIST, self)
             end
-            r.DermaSetTooltip = r.SetTooltip
-            function r:SetTooltip(str)
+            function r:CM_SetTooltip(str)
                 if IsValid(self.TooltipPanel) then
                     self.TooltipPanel:Remove()
                 end
@@ -1203,7 +1202,7 @@ if CLIENT then
             CloudMusic.User:SetVisible(false)
             CloudMusic.ShowRecommend:SetVisible(false)
             CloudMusic.ShowUserPlaylists:SetVisible(false)
-            CloudMusic.User:RemoveI18N()
+            CloudMusic.User:CM_RemoveI18N()
             if GetSettings("CloudMusicUserToken") == "" then
                 Print("No user token, using default layout")
                 CloudMusic.Login:SetVisible(true)
@@ -1297,7 +1296,7 @@ if CLIENT then
                             </html>
                         ]])
                     end
-                    CloudMusic.User:SetI18N("welcome")
+                    CloudMusic.User:CM_SetI18N("welcome")
                     CloudMusic.User:SetVisible(true)
                     hook.Run("CloudMusicUserInfo",userDetail)
                 end,function()
@@ -1590,7 +1589,7 @@ if CLIENT then
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(winw-self:GetWide()-27,30/2-20/2)
         end
-        CloudMusic.Login:SetI18N("login")
+        CloudMusic.Login:CM_SetI18N("login")
         CloudMusic.Login.Paint = ButtonPaint
         function CloudMusic.Login:DoClick()
             ShowOverlay()
@@ -1626,7 +1625,7 @@ if CLIENT then
                 if select(2,self:GetPos()) <= -select(2,self:GetSize()) then self:Remove() end
             end
             CloudMusic.LoginPrompt.Title = vgui.Create("DLabel",CloudMusic.LoginPrompt)
-            CloudMusic.LoginPrompt.Title:SetI18N("login_title")
+            CloudMusic.LoginPrompt.Title:CM_SetI18N("login_title")
             CloudMusic.LoginPrompt.Title:SetFont("CloudMusicTitle")
             CloudMusic.LoginPrompt.Title:SetColor(Color(0,0,0))
             CloudMusic.LoginPrompt.Title:SetContentAlignment(5)
@@ -1638,9 +1637,9 @@ if CLIENT then
             CloudMusic.LoginPrompt.ToggleMode:SetSize(350-20,20)
             function CloudMusic.LoginPrompt.ToggleMode:Think()
                 if CloudMusic.LoginPrompt.Mode == "Email" then
-                    self:SetI18N("use_phone")
+                    self:CM_SetI18N("use_phone")
                 elseif CloudMusic.LoginPrompt.Mode == "Phone" then
-                    self:SetI18N("use_email")
+                    self:CM_SetI18N("use_email")
                 end
             end
             function CloudMusic.LoginPrompt.ToggleMode:DoClick()
@@ -1661,15 +1660,15 @@ if CLIENT then
             CloudMusic.LoginPrompt.Username:SetSize(350-20,20)
             function CloudMusic.LoginPrompt.Username:Think()
                 if CloudMusic.LoginPrompt.Mode == "Email" then
-                    self:SetI18N("email",I18N_PLACEHOLDER)
+                    self:CM_SetI18N("email",I18N_PLACEHOLDER)
                 elseif CloudMusic.LoginPrompt.Mode == "Phone" then
-                    self:SetI18N("phone",I18N_PLACEHOLDER)
+                    self:CM_SetI18N("phone",I18N_PLACEHOLDER)
                 end
             end
             CloudMusic.LoginPrompt.Password = vgui.Create("DTextEntry",CloudMusic.LoginPrompt)
             CloudMusic.LoginPrompt.Password:SetPos(10,100)
             CloudMusic.LoginPrompt.Password:SetSize(350-20,20)
-            CloudMusic.LoginPrompt.Password:SetI18N("password",I18N_PLACEHOLDER)
+            CloudMusic.LoginPrompt.Password:CM_SetI18N("password",I18N_PLACEHOLDER)
             CloudMusic.LoginPrompt.Privacy = vgui.Create("DPanel", CloudMusic.LoginPrompt)
             CloudMusic.LoginPrompt.Privacy:SetPos(10,125)
             CloudMusic.LoginPrompt.Privacy:SetSize(350-20,20)
@@ -1679,20 +1678,20 @@ if CLIENT then
             function CloudMusic.LoginPrompt.Privacy.Text:LangUpdate()
                 self:SizeToContents()
             end
-            CloudMusic.LoginPrompt.Privacy.Text:SetI18N("read_agreed")
+            CloudMusic.LoginPrompt.Privacy.Text:CM_SetI18N("read_agreed")
             CloudMusic.LoginPrompt.Privacy.Link = vgui.Create("DLabelURL", CloudMusic.LoginPrompt.Privacy)
             function CloudMusic.LoginPrompt.Privacy.Link:LangUpdate()
                 self:SizeToContents()
                 self:SetPos(20+CloudMusic.LoginPrompt.Privacy.Text:GetWide(),0)
             end
-            CloudMusic.LoginPrompt.Privacy.Link:SetI18N("privacy_policy")
+            CloudMusic.LoginPrompt.Privacy.Link:CM_SetI18N("privacy_policy")
             CloudMusic.LoginPrompt.Privacy.Link:SizeToContents()
             CloudMusic.LoginPrompt.Privacy.Link:SetColor(Color(6,72,255))
             CloudMusic.LoginPrompt.Privacy.Link:SetURL("https://forum.m4tec.org/d/5-cloudmusic-for-garry-s-mod")
             CloudMusic.LoginPrompt.Login = vgui.Create("DButton",CloudMusic.LoginPrompt)
             CloudMusic.LoginPrompt.Login:SetPos(10,145)
             CloudMusic.LoginPrompt.Login:SetSize(350-20,20)
-            CloudMusic.LoginPrompt.Login:SetI18N("login")
+            CloudMusic.LoginPrompt.Login:CM_SetI18N("login")
             function CloudMusic.LoginPrompt.Login:DoClick()
                 if not CloudMusic.LoginPrompt.Privacy.Select:GetChecked() then
                     SetDMUISkin(Derma_Message(GetText("privacy_policy_warn"),GetText("warning"),GetText("ok")))
@@ -1766,7 +1765,7 @@ if CLIENT then
             CloudMusic.LoginPrompt.Cancel = vgui.Create("DButton",CloudMusic.LoginPrompt)
             CloudMusic.LoginPrompt.Cancel:SetPos(10,400-30)
             CloudMusic.LoginPrompt.Cancel:SetSize(350-20,20)
-            CloudMusic.LoginPrompt.Cancel:SetI18N("cancel")
+            CloudMusic.LoginPrompt.Cancel:CM_SetI18N("cancel")
             function CloudMusic.LoginPrompt.Cancel:DoClick()
                 oy = select(2,CloudMusic.LoginPrompt:GetPos())
                 y = -select(2,CloudMusic.LoginPrompt:GetSize())
@@ -1780,7 +1779,7 @@ if CLIENT then
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(winw-self:GetWide()-32,30/2-20/2)
         end
-        CloudMusic.Logout:SetI18N("logout")
+        CloudMusic.Logout:CM_SetI18N("logout")
         CloudMusic.Logout.Paint = ButtonPaint
         function CloudMusic.Logout:DoClick()
             TokenRequest("https://cm.luotianyi.me/api/logout?uid="..LocalPlayer():SteamID64(),function(body)
@@ -1799,7 +1798,7 @@ if CLIENT then
             self:SetSize(self:GetWide()+10,20)
             self:SetPos(winw-self:GetWide()-CloudMusic.Logout:GetWide()-37,30/2-20/2)
         end
-        CloudMusic.UserInfo:SetI18N("profile")
+        CloudMusic.UserInfo:CM_SetI18N("profile")
         CloudMusic.UserInfo.Paint = ButtonPaint
         function CloudMusic.UserInfo:DoClick()
             ShowOverlay()
@@ -1841,18 +1840,18 @@ if CLIENT then
             CloudMusic.UInfo.Username.I18NParams = {
                 ["name"] = userDetail["nickname"]
             }
-            CloudMusic.UInfo.Username:SetI18N("greeting")
+            CloudMusic.UInfo.Username:CM_SetI18N("greeting")
             CloudMusic.UInfo.Username:SizeToContents()
             CloudMusic.UInfo.Details = vgui.Create("DTextEntry", CloudMusic.UInfo)
             CloudMusic.UInfo.Details:SetEditable(false)
             CloudMusic.UInfo.Details:SetPos(5,74)
             CloudMusic.UInfo.Details:SetSize(winw/2-10,300-74-55)
-            CloudMusic.UInfo.Details:SetI18N("wait",I18N_VALUE)
+            CloudMusic.UInfo.Details:CM_SetI18N("wait",I18N_VALUE)
             CloudMusic.UInfo.Details:SetMultiline(true)
             CloudMusic.UInfo.Signin = vgui.Create("DButton",CloudMusic.UInfo)
             CloudMusic.UInfo.Signin:SetPos(5,300-50)
             CloudMusic.UInfo.Signin:SetSize(winw/2-10,20)
-            CloudMusic.UInfo.Signin:SetI18N("signin")
+            CloudMusic.UInfo.Signin:CM_SetI18N("signin")
             function CloudMusic.UInfo.Signin:DoClick()
                 self:SetDisabled(true)
                 Print("Signing in with Netease Android client")
@@ -1874,7 +1873,7 @@ if CLIENT then
             CloudMusic.UInfo.Close = vgui.Create("DButton",CloudMusic.UInfo)
             CloudMusic.UInfo.Close:SetPos(5,300-25)
             CloudMusic.UInfo.Close:SetSize(winw/2-10,20)
-            CloudMusic.UInfo.Close:SetI18N("close")
+            CloudMusic.UInfo.Close:CM_SetI18N("close")
             function CloudMusic.UInfo.Close:DoClick()
                 oy = select(2,CloudMusic.UInfo:GetPos())
                 y = -select(2,CloudMusic.UInfo:GetSize())
@@ -1884,7 +1883,7 @@ if CLIENT then
             TokenRequest("https://cm.luotianyi.me/api/user/subcount?u="..LocalPlayer():SteamID64(),function(body)
                 local json = util.JSONToTable(body)
                 if not json then
-                    CloudMusic.UInfo.Details:SetI18N("fetch_failed",I18N_VALUE)
+                    CloudMusic.UInfo.Details:CM_SetI18N("fetch_failed",I18N_VALUE)
                     return
                 end
                 if json["code"] == 200 and IsValid(CloudMusic.UInfo) then
@@ -1897,7 +1896,7 @@ if CLIENT then
                         ["createdPlaylistCount"] = json["createdPlaylistCount"],
                         ["subPlaylistCount"] = json["subPlaylistCount"]
                     }
-                    CloudMusic.UInfo.Details:SetI18N("user_details",I18N_VALUE)
+                    CloudMusic.UInfo.Details:CM_SetI18N("user_details",I18N_VALUE)
                 end
             end)
             SetUISkin(CloudMusic.UInfo)
@@ -1921,7 +1920,7 @@ if CLIENT then
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(winw-self:GetWide()-5,19)
         end
-        CloudMusic.SettingsButton:SetI18N("settings")
+        CloudMusic.SettingsButton:CM_SetI18N("settings")
         CloudMusic.SettingsButton.DoClick = function()currentShowingPage = "Settings"CloudMusic.Settings.Playerlist:SyncBlacklist()end
         CloudMusic.SettingsButton.Paint = ButtonPaint
         CloudMusic.SonglistForm = vgui.Create("DPanel",CloudMusic.Body)
@@ -1943,7 +1942,7 @@ if CLIENT then
             self:SetPos(CloudMusic.SonglistForm.Input:GetWide()+5,14)
             CloudMusic.SonglistForm:SetWide(self:GetWide()+CloudMusic.SonglistForm.Input:GetWide()+5)
         end
-        CloudMusic.SonglistForm.Fetch:SetI18N("fetch")
+        CloudMusic.SonglistForm.Fetch:CM_SetI18N("fetch")
         CloudMusic.SonglistForm.Fetch.DoClick = function()
             local success,songlist = xpcall(function()return CloudMusic.SonglistForm.Input:GetInt()end,function()end)
             if not success or not songlist then
@@ -1993,7 +1992,7 @@ if CLIENT then
             CloudMusic.SearchForm:SetPos(CloudMusic.SonglistForm:GetWide()+10,5)
             CloudMusic.SearchForm:SetWide(105+self:GetWide())
         end
-        CloudMusic.SearchForm.Search:SetI18N("search")
+        CloudMusic.SearchForm.Search:CM_SetI18N("search")
         CloudMusic.SearchForm.Search.DoClick = function()
             SetTopFormsDisabled(true)
             Print("Searching songs")
@@ -2040,7 +2039,7 @@ if CLIENT then
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(CloudMusic.SearchForm:GetPos()+CloudMusic.SearchForm:GetWide()+10,19)
         end
-        CloudMusic.ShowRecommend:SetI18N("daily_recommend")
+        CloudMusic.ShowRecommend:CM_SetI18N("daily_recommend")
         CloudMusic.ShowRecommend.Paint = ButtonPaint
         function CloudMusic.ShowRecommend:DoClick()
             SetTopFormsDisabled(true)
@@ -2075,7 +2074,7 @@ if CLIENT then
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(CloudMusic.ShowRecommend:GetPos()+CloudMusic.ShowRecommend:GetWide()+5,19)
         end
-        CloudMusic.ShowUserPlaylists:SetI18N("my_playlists")
+        CloudMusic.ShowUserPlaylists:CM_SetI18N("my_playlists")
         CloudMusic.ShowUserPlaylists.Paint = ButtonPaint
         function CloudMusic.ShowUserPlaylists:DoClick()
             SetTopFormsDisabled(true)
@@ -2103,12 +2102,12 @@ if CLIENT then
         end
         CloudMusic.Songlist = vgui.Create("DListView",CloudMusic.Body)
         do
-            CloudMusic.Songlist:AddColumn(""):SetI18N("song_name",I18N_COLUMN)
-            CloudMusic.Songlist:AddColumn(""):SetI18N("artist",I18N_COLUMN)
-            CloudMusic.Songlist:AddColumn(""):SetI18N("album",I18N_COLUMN)
+            CloudMusic.Songlist:AddColumn(""):CM_SetI18N("song_name",I18N_COLUMN)
+            CloudMusic.Songlist:AddColumn(""):CM_SetI18N("artist",I18N_COLUMN)
+            CloudMusic.Songlist:AddColumn(""):CM_SetI18N("album",I18N_COLUMN)
             local id_column = CloudMusic.Songlist:AddColumn("")
             id_column:SetMaxWidth(100)
-            id_column:SetI18N("song_id",I18N_COLUMN)
+            id_column:CM_SetI18N("song_id",I18N_COLUMN)
         end
         CloudMusic.Songlist:SetSortable(false)
         CloudMusic.Songlist:SetPos(5,44)
@@ -2193,12 +2192,12 @@ if CLIENT then
         end
         CloudMusic.Playlists = vgui.Create("DListView",CloudMusic.Body)
         do
-            CloudMusic.Playlists:AddColumn(""):SetI18N("playlist_name",I18N_COLUMN)
-            CloudMusic.Playlists:AddColumn(""):SetI18N("author",I18N_COLUMN)
-            CloudMusic.Playlists:AddColumn(""):SetI18N("song_count",I18N_COLUMN)
+            CloudMusic.Playlists:AddColumn(""):CM_SetI18N("playlist_name",I18N_COLUMN)
+            CloudMusic.Playlists:AddColumn(""):CM_SetI18N("author",I18N_COLUMN)
+            CloudMusic.Playlists:AddColumn(""):CM_SetI18N("song_count",I18N_COLUMN)
             local id_column = CloudMusic.Playlists:AddColumn("")
             id_column:SetMaxWidth(100)
-            id_column:SetI18N("playlist_id",I18N_COLUMN)
+            id_column:CM_SetI18N("playlist_id",I18N_COLUMN)
         end
         CloudMusic.Playlists:SetSortable(false)
         CloudMusic.Playlists:SetPos(5,44)
@@ -2293,11 +2292,11 @@ if CLIENT then
         end
         CloudMusic.Playlist = vgui.Create("DListView",CloudMusic.Body)
         do
-            CloudMusic.Playlist:AddColumn(""):SetI18N("song_name",I18N_COLUMN)
-            CloudMusic.Playlist:AddColumn(""):SetI18N("artist",I18N_COLUMN)
+            CloudMusic.Playlist:AddColumn(""):CM_SetI18N("song_name",I18N_COLUMN)
+            CloudMusic.Playlist:AddColumn(""):CM_SetI18N("artist",I18N_COLUMN)
             local id_column = CloudMusic.Playlist:AddColumn("")
             id_column:SetMaxWidth(100)
-            id_column:SetI18N("song_id",I18N_COLUMN)
+            id_column:CM_SetI18N("song_id",I18N_COLUMN)
         end
         CloudMusic.Playlist:SetSortable(false)
         CloudMusic.Playlist:SetPos(winw-305,44)
@@ -2379,7 +2378,7 @@ if CLIENT then
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(winw-10-CloudMusic.Playlist:GetWide()-self:GetWide(),19)
         end
-        CloudMusic.NextPage:SetI18N("next_page")
+        CloudMusic.NextPage:CM_SetI18N("next_page")
         CloudMusic.NextPage:SetVisible(false)
         function CloudMusic.NextPage:DoClick()
             self:SetDisabled(true)
@@ -2413,7 +2412,7 @@ if CLIENT then
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(CloudMusic.NextPage:GetPos()-self:GetWide()-5,19) 
         end
-        CloudMusic.PrevPage:SetI18N("prev_page")
+        CloudMusic.PrevPage:CM_SetI18N("prev_page")
         CloudMusic.PrevPage:SetVisible(false)
         function CloudMusic.PrevPage:DoClick()
             self:SetDisabled(true)
@@ -2457,7 +2456,7 @@ if CLIENT then
             buffering = true
             self.Player.Thumbnail:SetHTML([[
                 <body style="margin:0;">
-                    <img src="]]..self.CurrentPlaying.Thumbnail..[[" style="width:100%;height:100%;"/>
+                    <img src="]]..self.CurrentPlaying.Thumbnail.."?param="..self.Player.Thumbnail:GetWide().."y"..self.Player.Thumbnail:GetTall()..[[" style="width:100%;height:100%;"/>
                     <script>
                         window.onmousedown = function() {return false;}
                         window.onkeydown = function() {return false;}
@@ -2483,7 +2482,7 @@ if CLIENT then
                             self.CurrentChannel = station
                             FetchLyric()
                             self.HUD:RunJavascript([[
-                                setThumbnail("]]..self.CurrentPlaying.Thumbnail..[[");
+                                setThumbnail("]]..self.CurrentPlaying.Thumbnail..[[?param=32y32");
                                 setSongname("]]..self.CurrentPlaying.Name:JavascriptSafe()..[[");
                                 setArtist("]]..self.CurrentPlaying.Artist:JavascriptSafe()..[[");
                             ]])
@@ -2658,7 +2657,7 @@ if CLIENT then
             self:SetSize(self:GetWide()+3,18)
             self:SetPos(CloudMusic.Player:GetTall()+5,48)
         end
-        CloudMusic.Player.Prev:SetI18N("prev_song")
+        CloudMusic.Player.Prev:CM_SetI18N("prev_song")
         CloudMusic.Player.Prev.DoClick = function()
             CloudMusic:Prev()
         end
@@ -2669,7 +2668,7 @@ if CLIENT then
             end
         end
         CloudMusic.Player.PlayPause = vgui.Create("DButton",CloudMusic.Player)
-        CloudMusic.Player.PlayPause:SetI18N("play")
+        CloudMusic.Player.PlayPause:CM_SetI18N("play")
         function CloudMusic.Player.PlayPause:LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,18)
@@ -2688,12 +2687,12 @@ if CLIENT then
             if IsValid(CloudMusic.CurrentChannel) then
                 self:SetDisabled(false)
                 if CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_PLAYING or CloudMusic.CurrentChannel:GetState() == GMOD_CHANNEL_STALLED then
-                    self:SetI18N("pause")
+                    self:CM_SetI18N("pause")
                 else
-                    self:SetI18N("play")
+                    self:CM_SetI18N("play")
                 end
             elseif not self:GetDisabled() then
-                self:SetI18N("play")
+                self:CM_SetI18N("play")
                 self:SetDisabled(true)
             end
         end
@@ -2703,7 +2702,7 @@ if CLIENT then
             self:SetSize(self:GetWide()+3,18)
             self:SetPos(CloudMusic.Player.PlayPause:GetPos()+CloudMusic.Player.PlayPause:GetWide()+5,48)
         end
-        CloudMusic.Player.Next:SetI18N("next_song")
+        CloudMusic.Player.Next:CM_SetI18N("next_song")
         CloudMusic.Player.Next.DoClick = function()
             CloudMusic:Next()
         end
@@ -2714,7 +2713,7 @@ if CLIENT then
             end
         end
         CloudMusic.Player.Mode = vgui.Create("DButton",CloudMusic.Player)
-        CloudMusic.Player.Mode:SetI18N("list_loop")
+        CloudMusic.Player.Mode:CM_SetI18N("list_loop")
         function CloudMusic.Player.Mode:LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,18)
@@ -2735,13 +2734,13 @@ if CLIENT then
         CloudMusic.Player.Mode.Paint = ButtonPaint
         function CloudMusic.Player.Mode:Think()
             if GetSettings("CloudMusicPlayMode") == "ListLoop" then
-                self:SetI18N("list_loop")
+                self:CM_SetI18N("list_loop")
             elseif GetSettings("CloudMusicPlayMode") == "SingleLoop" then
-                self:SetI18N("single_loop")
+                self:CM_SetI18N("single_loop")
             elseif GetSettings("CloudMusicPlayMode") == "Random" then
-                self:SetI18N("random_play")
+                self:CM_SetI18N("random_play")
             elseif GetSettings("CloudMusicPlayMode") == "List" then
-                self:SetI18N("list_play")
+                self:CM_SetI18N("list_play")
             end
         end
         CloudMusic.Player.CopyLink = vgui.Create("DButton",CloudMusic.Player)
@@ -2750,7 +2749,7 @@ if CLIENT then
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(CloudMusic.Player:GetWide()-self:GetWide(),0)
         end
-        CloudMusic.Player.CopyLink:SetI18N("copy_link")
+        CloudMusic.Player.CopyLink:CM_SetI18N("copy_link")
         CloudMusic.Player.CopyLink.DoClick = function()
             SetClipboardText("https://music.163.com/song/media/outer/url?id="..CloudMusic.CurrentPlaying.ID..".mp3")
         end
@@ -2771,7 +2770,7 @@ if CLIENT then
             end
         end
         function CloudMusic.Player.VolumeEnhance:Think()
-            self:SetI18N(GetSettings("CloudMusicVolumeEnhance") and "disable_volume_enhance" or "enable_volume_enhance")
+            self:CM_SetI18N(GetSettings("CloudMusicVolumeEnhance") and "disable_volume_enhance" or "enable_volume_enhance")
             if CloudMusic.Volume >= 1 then
                 if GetSettings("CloudMusicVolumeEnhance") and CloudMusic.Volume ~= 2 then
                     CloudMusic.Volume = 2
@@ -3244,7 +3243,7 @@ if CLIENT then
             self:SetPos(surface.GetTextSize(GetText("settings"))+15,5)
             self:SetSize(self:GetWide(),20)
         end
-        CloudMusic.Settings.Back:SetI18N("back")
+        CloudMusic.Settings.Back:CM_SetI18N("back")
         CloudMusic.Settings.Back:SetColor(Color(255,255,255))
         CloudMusic.Settings.Back.DoClick = function()currentShowingPage = "Main"end
         CloudMusic.Settings.Back.Paint = ButtonPaint
@@ -3372,22 +3371,22 @@ if CLIENT then
         end
         function CloudMusic.Settings.HudPos:Think()
             if GetSettings("CloudMusicHudPos") == "top-left" then
-                self:SetI18N("top_left")
+                self:CM_SetI18N("top_left")
             elseif GetSettings("CloudMusicHudPos") == "top-right" then
-                self:SetI18N("top_right")
+                self:CM_SetI18N("top_right")
             elseif GetSettings("CloudMusicHudPos") == "bottom-left" then
-                self:SetI18N("bottom_left")
+                self:CM_SetI18N("bottom_left")
             elseif GetSettings("CloudMusicHudPos") == "bottom-right" then
-                self:SetI18N("bottom_right")
+                self:CM_SetI18N("bottom_right")
             end
         end
         CloudMusic.Settings.HudPos.Paint = ButtonPaint
         CloudMusic.Settings.UseServer = vgui.Create("DCheckBox", CloudMusic.Settings)
         CloudMusic.Settings.UseServer:SetPos(320,50)
         CloudMusic.Settings.UseServer:SetChecked(GetSettings("CloudMusicUseServer"))
-        CloudMusic.Settings.UseServer:SetI18N("use_server_link_tip",I18N_PLACEHOLDER)
+        CloudMusic.Settings.UseServer:CM_SetI18N("use_server_link_tip",I18N_PLACEHOLDER)
         function CloudMusic.Settings.UseServer:LangUpdate()
-            self:SetTooltip(GetText("use_server_link_tip"))
+            self:CM_SetTooltip(GetText("use_server_link_tip"))
         end
         function CloudMusic.Settings.UseServer:OnChange(val)
             SetSettings("CloudMusicUseServer",val)
@@ -3405,7 +3404,7 @@ if CLIENT then
             surface.SetFont("CloudMusicText")
             self:SetPos(160+surface.GetTextSize(GetText("center_lyric"))+10,select(2,self:GetPos()))
         end
-        CloudMusic.Settings.LyricSize:SetI18N("lyric_size")
+        CloudMusic.Settings.LyricSize:CM_SetI18N("lyric_size")
         CloudMusic.Settings.LyricSize:SetSize(150,20)
         CloudMusic.Settings.LyricSize:SetMin(18)
         CloudMusic.Settings.LyricSize:SetMax(32)
@@ -3420,11 +3419,11 @@ if CLIENT then
         end
         CloudMusic.Settings.Playerlist = vgui.Create("DListView",CloudMusic.Settings)
         do
-            CloudMusic.Settings.Playerlist:AddColumn(""):SetI18N("player_name",I18N_COLUMN)
+            CloudMusic.Settings.Playerlist:AddColumn(""):CM_SetI18N("player_name",I18N_COLUMN)
             CloudMusic.Settings.Playerlist:AddColumn("SteamID64")
             local blacklist = CloudMusic.Settings.Playerlist:AddColumn("")
             blacklist:SetMaxWidth(55)
-            blacklist:SetI18N("blacklist",I18N_COLUMN)
+            blacklist:CM_SetI18N("blacklist",I18N_COLUMN)
         end
         CloudMusic.Settings.Playerlist:SetPos(170,130)
         CloudMusic.Settings.Playerlist:SetSize(300,250)
@@ -3472,7 +3471,7 @@ if CLIENT then
             function w.Status:LangUpdate()
                 self:SizeToContents()
             end
-            w.Status:SetI18N("wait")
+            w.Status:CM_SetI18N("wait")
             w.Thumbnail = vgui.Create("DHTML",w)
             w.Thumbnail:SetPos(5,74)
             w.Thumbnail:SetSize(64,64)
@@ -3487,7 +3486,7 @@ if CLIENT then
             w.Close = vgui.Create("DButton",w)
             w.Close:SetPos(5,select(2,w:GetSize())-25)
             w.Close:SetSize(w:GetSize()-10,20)
-            w.Close:SetI18N("close")
+            w.Close:CM_SetI18N("close")
             function w.Close:DoClick()
                 oy = select(2,w:GetPos())
                 y = -select(2,w:GetSize())
@@ -3500,7 +3499,7 @@ if CLIENT then
                 elseif p.CM_MusicInfo["Status"] == CM_STATUS_PAUSE then
                     stat = "paused"
                 end
-                self.Status:SetI18N(stat)
+                self.Status:CM_SetI18N(stat)
                 if p.CM_MusicInfo["Status"] ~= CM_STATUS_NON_INFO then
                     self.Thumbnail:SetHTML([[
                         <body style="margin:0;">
@@ -3650,7 +3649,7 @@ if CLIENT then
             local title = self:Add("DLabel")
             title:SetTextColor(GetSettings("CloudMusicTextColor"))
             title:SetFont("CloudMusicText")
-            title:SetI18N(name)
+            title:CM_SetI18N(name)
             title:Dock(TOP)
             local mixer = self:Add("DColorMixer")
             mixer:SetSize(150,200)
@@ -3675,7 +3674,7 @@ if CLIENT then
         CloudMusic.Settings.Colors.Reset = CloudMusic.Settings.Colors:Add("DButton")
         CloudMusic.Settings.Colors.Reset:SetSize(45,20)
         CloudMusic.Settings.Colors.Reset:SetColor(Color(255,255,255))
-        CloudMusic.Settings.Colors.Reset:SetI18N("reset_all_colors")
+        CloudMusic.Settings.Colors.Reset:CM_SetI18N("reset_all_colors")
         CloudMusic.Settings.Colors.Reset:Dock(TOP)
         function CloudMusic.Settings.Colors.Reset:DoClick()
             SetDMUISkin(Derma_Query(GetText("undo_warn"),GetText("reset_all_colors_title"),GetText("sure"),function()
@@ -3696,7 +3695,7 @@ if CLIENT then
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(winw/2-self:GetWide()-2.5,winh-66)
         end
-        CloudMusic.Settings.Texas:SetI18N("contact")
+        CloudMusic.Settings.Texas:CM_SetI18N("contact")
         CloudMusic.Settings.Texas.DoClick = function()
             gui.OpenURL("http://steamcommunity.com/profiles/76561198163912747")
         end
@@ -3707,7 +3706,7 @@ if CLIENT then
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(winw/2+2.5,winh-66)
         end
-        CloudMusic.Settings.Donate:SetI18N("donate")
+        CloudMusic.Settings.Donate:CM_SetI18N("donate")
         CloudMusic.Settings.Donate.DoClick = function()
             gui.OpenURL("http://texas.penguin-logistics.cn/donate")
         end
