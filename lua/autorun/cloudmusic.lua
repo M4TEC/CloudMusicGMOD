@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200223.02" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200224" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -2781,11 +2781,10 @@ if CLIENT then
             end
         end
         CloudMusic.Player.VolumeEnhance.Paint = ButtonPaint
-        CloudMusic.HUD = vgui.Create("DHTML",vgui.GetWorldPanel())
+        CloudMusic.HUD = vgui.Create("DHTML")
         CloudMusic.HUD:SetPos(0,0)
         CloudMusic.HUD:SetSize(ScrW(),ScrH())
-        CloudMusic.HUD:SetZPos(10)
-        CloudMusic.HUD:Dock(FILL)
+        CloudMusic.HUD:ParentToHUD()
         CloudMusic.HUD:SetHTML([[
             <html>
                 <head>
