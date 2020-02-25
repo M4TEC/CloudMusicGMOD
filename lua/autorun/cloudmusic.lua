@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200225" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200225.01" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -1085,13 +1085,15 @@ if CLIENT then
             if IsValid(ply) and not ply.ChannelCreating then
                 ply.ChannelCreating = true
                 GetSongURL(id,function(url)
-                    sound.PlayURL(url,"noblock 3d",function(station)
+                    sound.PlayURL(url,"noblock 3d",function(station,errid,errname)
                         if IsValid(station) and IsValid(ply) then
                             table.insert(channelPlayers, ply)
                             ply.CM_MusicChannel = station
                             ply.CM_MusicChannelID = id
                             net.Start("CloudMusicReqSync")
                             net.SendToServer()
+                        else
+                            Print("An error happend when playing music. "..errid.." : "..errname)
                         end
                         ply.ChannelCreating = false
                     end)
@@ -2188,7 +2190,7 @@ if CLIENT then
             TokenRequest("https://cm.luotianyi.me/api/user/playlist?uid="..userDetail["userId"],function(body)
                 local result = util.JSONToTable(body)
                 if not result or result["code"] ~= 200 then
-                    SetDMUISkin(Derma_Message(GetText("fetch_user_playlists_faield"), GetText("error"), GetText("ok")))
+                    SetDMUISkin(Derma_Message(GetText("fetch_user_playlists_failed"), GetText("error"), GetText("ok")))
                     CloudMusic.PrevPage:SetVisible(prev)
                     CloudMusic.NextPage:SetVisible(next)
                     return
@@ -2198,7 +2200,7 @@ if CLIENT then
                 CloudMusic.Playlists:SetVisible(true)
                 Print("Fetch user playlists successed")
             end,function()
-                SetDMUISkin(Derma_Message(GetText("fetch_user_playlists_faield"), GetText("error"), GetText("ok")))
+                SetDMUISkin(Derma_Message(GetText("fetch_user_playlists_failed"), GetText("error"), GetText("ok")))
             end,function()
                 SetTopFormsDisabled(false)
             end)
@@ -2576,7 +2578,7 @@ if CLIENT then
             AddProgress("CloudMusicBuffering",self.CurrentPlaying.Name.." - "..self.CurrentPlaying.Artist,GetText("try_play"))
             GetSongURL(cId,function(url)
                 Print("Fetch song url successed")
-                sound.PlayURL(url, "noblock", function(station)
+                sound.PlayURL(url, "noblock", function(station,errid,errname)
                     buffering = false
                     RemoveProgress("CloudMusicBuffering")
                     if IsValid(station) then
@@ -2595,6 +2597,7 @@ if CLIENT then
                         end
                     else
                         SongPlayError()
+                        Print("An error happend when playing music. "..errid.." : "..errname)
                     end
                     SendSyncData()
                     SendInfoData()
