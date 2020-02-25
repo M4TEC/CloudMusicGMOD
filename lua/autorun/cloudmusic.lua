@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200224" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200225" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -1228,6 +1228,7 @@ if CLIENT then
                         Print("Failed to fetch user info, using default layout")
                         return
                     end
+                    userDetail["vipType"] = 0
                     Print("User is logged in, using logged in layout")
                     CloudMusic.Logout:SetVisible(true)
                     CloudMusic.UserInfo:SetVisible(true)
@@ -1238,6 +1239,11 @@ if CLIENT then
                             self:ReloadProfile()
                         end
                         self.last = str
+                    end
+                    function CloudMusic.User:OnDocumentReady()
+                        self:RunJavascript([[
+                            setVipType(]]..userDetail["vipType"]..[[)
+                        ]])
                     end
                     function CloudMusic.User:ReloadProfile()
                         self:SetHTML([[
@@ -1283,21 +1289,55 @@ if CLIENT then
                                             width:30px;
                                             height:30px;
                                         }
+                                        img.vipBadge {
+                                            right: 100%;
+                                            padding-right: 5px;
+                                            top: 0;
+                                            bottom: 0;
+                                            height: 18px;
+                                        }
                                     </style>
                                 </head>
                                 <body>
                                     <div class="user-info">
                                         <span class="welcome">]]..GetText("welcome")..[[</span>
-                                        <span class="username">]]..userDetail["nickname"]..[[</span>
+                                        <span class="username"><img src="" style="display:none;" class="vipBadge"/>]]..userDetail["nickname"]..[[</span>
                                     </div>]]..(type(userDetail["avatarUrl"]) == "string" and [[
                                     <img src="]]..userDetail["avatarUrl"]..[["/>
                                     ]] or [[]])..[[
+                                    <script>
+                                        function setVipType(type) {
+                                            var vb = document.getElementsByClassName("vipBadge")[0];
+                                            switch(type) {
+                                                case 10:
+                                                    vb.src = "https://cm.luotianyi.me/resources/vip.png";
+                                                    vb.style.display = "inline-block";
+                                                    break;
+                                                case 11:
+                                                    vb.src = "https://cm.luotianyi.me/resources/bvip.png";
+                                                    vb.style.display = "inline-block";
+                                                    break;
+                                                default:
+                                                    vb.style.display = "none";
+                                                    break;
+                                            }
+                                        }
+                                    </script>
                                 </body>
                             </html>
                         ]])
                     end
                     CloudMusic.User:CM_SetI18N("welcome")
                     CloudMusic.User:SetVisible(true)
+                    TokenRequest("https://cm.luotianyi.me/api/user/detail?uid="..userDetail["userId"],function(body)
+                        local json = util.JSONToTable(body)
+                        if not json or json["code"] ~= 200 then
+                            return
+                        end
+                        userDetail = json["profile"]
+                        Print("Successfully fetch user details")
+                        hook.Call("CloudMusicUserDetailInfo")
+                    end)
                     hook.Run("CloudMusicUserInfo",userDetail)
                 end,function()
                     AddMessage(GetText("userinfofailed"),nil,3000,"error")
@@ -1824,6 +1864,35 @@ if CLIENT then
                 end
                 if select(2,self:GetPos()) <= -select(2,self:GetSize()) then self:Remove() end
             end
+            if userDetail["backgroundUrl"] ~= nil then
+                CloudMusic.UInfo.Background = vgui.Create("DHTML", CloudMusic.UInfo)
+                CloudMusic.UInfo.Background:SetZPos(-1)
+                CloudMusic.UInfo.Background:Dock(FILL)
+                CloudMusic.UInfo.Background:SetHTML([[
+                    <html>
+                        <head>
+                            <style>
+                                body {
+                                    background: url(]]..userDetail["backgroundUrl"]..[[) no-repeat;
+                                    background-size: 100% auto;
+                                    overflow: hidden;
+                                }
+                                .filter {
+                                    position: fixed;
+                                    top: 0;
+                                    left: 0;
+                                    right: 0;
+                                    bottom: 0;
+                                    background: linear-gradient(transparent, white);
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="filter"></div>
+                        </body>
+                    </html>
+                ]])
+            end
             CloudMusic.UInfo.Avatar = vgui.Create("DHTML", CloudMusic.UInfo)
             CloudMusic.UInfo.Avatar:SetPos(5,5)
             CloudMusic.UInfo.Avatar:SetSize(64,64)
@@ -1842,12 +1911,46 @@ if CLIENT then
             }
             CloudMusic.UInfo.Username:CM_SetI18N("greeting")
             CloudMusic.UInfo.Username:SizeToContents()
-            CloudMusic.UInfo.Details = vgui.Create("DTextEntry", CloudMusic.UInfo)
-            CloudMusic.UInfo.Details:SetEditable(false)
+            CloudMusic.UInfo.Badges = vgui.Create("DHTML", CloudMusic.UInfo)
+            CloudMusic.UInfo.Badges:SetPos(74,28)
+            CloudMusic.UInfo.Badges:SetSize(74,18)
+            CloudMusic.UInfo.Badges:SetHTML([[
+                <html>
+                    <head>
+                        <style>
+                            body {
+                                overflow: hidden;
+                                margin: 0;
+                            }
+                            img {
+                                height: 18px;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <script>
+                            function addBadge(img) {
+                                document.body.innerHTML += "<img src=\"" + img + "\"/>";
+                            }
+                        </script>
+                    </body>
+                </html>
+            ]])
+            function CloudMusic.UInfo.Badges:OnDocumentReady()
+                if userDetail["vipType"] == 10 then
+                    CloudMusic.UInfo.Badges:RunJavascript([[
+                        addBadge("https://cm.luotianyi.me/resources/vip.png");
+                    ]])
+                elseif userDetail["vipType"] == 11 then
+                    CloudMusic.UInfo.Badges:RunJavascript([[
+                        addBadge("https://cm.luotianyi.me/resources/bvip.png");
+                    ]])
+                end
+            end
+            CloudMusic.UInfo.Details = vgui.Create("DLabel", CloudMusic.UInfo)
             CloudMusic.UInfo.Details:SetPos(5,74)
             CloudMusic.UInfo.Details:SetSize(winw/2-10,300-74-55)
-            CloudMusic.UInfo.Details:CM_SetI18N("wait",I18N_VALUE)
-            CloudMusic.UInfo.Details:SetMultiline(true)
+            CloudMusic.UInfo.Details:CM_SetI18N("wait")
             CloudMusic.UInfo.Signin = vgui.Create("DButton",CloudMusic.UInfo)
             CloudMusic.UInfo.Signin:SetPos(5,300-50)
             CloudMusic.UInfo.Signin:SetSize(winw/2-10,20)
@@ -1883,7 +1986,7 @@ if CLIENT then
             TokenRequest("https://cm.luotianyi.me/api/user/subcount?u="..LocalPlayer():SteamID64(),function(body)
                 local json = util.JSONToTable(body)
                 if not json then
-                    CloudMusic.UInfo.Details:CM_SetI18N("fetch_failed",I18N_VALUE)
+                    CloudMusic.UInfo.Details:CM_SetI18N("fetch_failed")
                     return
                 end
                 if json["code"] == 200 and IsValid(CloudMusic.UInfo) then
@@ -1896,7 +1999,7 @@ if CLIENT then
                         ["createdPlaylistCount"] = json["createdPlaylistCount"],
                         ["subPlaylistCount"] = json["subPlaylistCount"]
                     }
-                    CloudMusic.UInfo.Details:CM_SetI18N("user_details",I18N_VALUE)
+                    CloudMusic.UInfo.Details:CM_SetI18N("user_details")
                 end
             end)
             SetUISkin(CloudMusic.UInfo)
@@ -3947,6 +4050,9 @@ if CLIENT then
         CloudMusic.Playlists:SetVisible(false)
         CloudMusic:SetAlpha(0)
         CloudMusic:SetVisible(false)
+        hook.Add("CloudMusicUserDetailInfo", "CloudMusic_DetailUpdate", function()
+            CloudMusic.User:ReloadProfile()
+        end)
         InitUserInfo()
         hook.Add("PlayerSpawn","CloudMusic_PlayerSpawn",function()
             CloudMusic.Settings.Playerlist:SyncBlacklist()
