@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200226" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200227" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -516,7 +516,7 @@ if CLIENT then
         end
         return text
     end
-    local CLOUDMUSIC_SETTING_FILE_VER = "1.2.0" -- DO NOT modify unless you know WHAT ARE YOU DOING
+    local CLOUDMUSIC_SETTING_FILE_VER = "1.3.0" -- DO NOT modify unless you know WHAT ARE YOU DOING
     CreateClientConVar("cloudmusic_verbose", "0", true, false, GetText("verbose_help"))
     if file.Exists("materials/gwenskin/windows10.png", "GAME") then
         --Windows 10 UI Skin by Spar
@@ -597,19 +597,16 @@ if CLIENT then
             ["CloudMusicPlaylist"] = {},
             ["CloudMusicUserToken"] = ""
         }
+        local defaultSettings = table.Copy(settings)
+        local defaultKeys = GetStringTableKeys(defaultSettings)
         local function SaveSettings(set)
             local temp = table.Copy(settings)
             temp["version"] = CLOUDMUSIC_SETTING_FILE_VER
-            file.Write(settingFilePath, util.TableToJSON(temp))
+            file.Write(settingFilePath, util.Compress(util.TableToJSON(temp)))
             Print("User settings saved")
         end
-        local defaultSettings = table.Copy(settings)
-        local defaultKeys = GetStringTableKeys(defaultSettings)
-        if not file.Exists(settingFilePath, "DATA") then
-            SaveSettings()
-            Print("No settings file, creating a new file")
-        else
-            local json = util.JSONToTable(file.Read(settingFilePath))
+        local function ReloadSettings()
+            local json = util.JSONToTable(util.Decompress(file.Read(settingFilePath)))
             if not json then
                 SaveSettings()
                 Print("Invalid settings file, resetting settings file")
@@ -637,6 +634,21 @@ if CLIENT then
                 SaveSettings()
                 Print("User settings loaded")
             end
+        end
+        if not file.Exists(settingFilePath, "DATA") then
+            if CLOUDMUSIC_SETTING_FILE_VER == "1.3.0" and file.Exists("cloudmusic/settings.1.2.0.dat", "DATA") then
+                Print("Found support old version settings file, upgrading...")
+                local oldSettings = util.JSONToTable(file.Read("cloudmusic/settings.1.2.0.dat"))
+                oldSettings["version"] = CLOUDMUSIC_SETTING_FILE_VER
+                file.Write(settingFilePath, util.Compress(util.TableToJSON(oldSettings)))
+                Print("Upgrade success")
+                ReloadSettings()
+            else
+                SaveSettings()
+                Print("No settings file, creating a new file")
+            end
+        else
+            ReloadSettings()
         end
         local function GetSettings(name)
             return settings[name]
@@ -684,13 +696,12 @@ if CLIENT then
                     if c.SetPlaceholderText and c.I18NType == I18N_PLACEHOLDER then c:SetPlaceholderText(GetText(c.I18Name,unpack(params))) end
                     if c.SetValue and c.I18NType == I18N_VALUE then c:SetValue(GetText(c.I18Name,unpack(params))) end
                     if c.SetName and c.I18NType == I18N_COLUMN then c:SetName(GetText(c.I18Name,unpack(params))) end
-                    if c.LangUpdate then c:LangUpdate() end
+                    if c.CM_LangUpdate then c:CM_LangUpdate() end
                 else
                     table.RemoveByValue(I18N_LIST, c)
                 end
             end
         end
-        local vgui = vgui
         vgui.__oldCreate = vgui.__oldCreate or vgui.Create
         function vgui.Create(...)
             local r = vgui.__oldCreate(...)
@@ -1118,6 +1129,12 @@ if CLIENT then
             for _,v in pairs(list.Columns) do
                 v.DoClick = function() end
             end
+        end
+        local function ColorValid(c)
+            if type(c) ~= "table" then return false end
+            if not c.a then c.a = 255 end
+            if not c.r or not c.g or not c.b then return false end
+            return true
         end
         local function ColorEqual(a,b)
             if type(a) ~= "table" or type(b) ~= "table" then return false end
@@ -1639,7 +1656,7 @@ if CLIENT then
             end
         end
         CloudMusic.Login = vgui.Create("DButton",CloudMusic)
-        function CloudMusic.Login:LangUpdate()
+        function CloudMusic.Login:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(winw-self:GetWide()-27,30/2-20/2)
@@ -1730,12 +1747,12 @@ if CLIENT then
             CloudMusic.LoginPrompt.Privacy.Select = vgui.Create("DCheckBox", CloudMusic.LoginPrompt.Privacy)
             CloudMusic.LoginPrompt.Privacy.Text = vgui.Create("DLabel", CloudMusic.LoginPrompt.Privacy)
             CloudMusic.LoginPrompt.Privacy.Text:SetPos(20,0)
-            function CloudMusic.LoginPrompt.Privacy.Text:LangUpdate()
+            function CloudMusic.LoginPrompt.Privacy.Text:CM_LangUpdate()
                 self:SizeToContents()
             end
             CloudMusic.LoginPrompt.Privacy.Text:CM_SetI18N("read_agreed")
             CloudMusic.LoginPrompt.Privacy.Link = vgui.Create("DLabelURL", CloudMusic.LoginPrompt.Privacy)
-            function CloudMusic.LoginPrompt.Privacy.Link:LangUpdate()
+            function CloudMusic.LoginPrompt.Privacy.Link:CM_LangUpdate()
                 self:SizeToContents()
                 self:SetPos(20+CloudMusic.LoginPrompt.Privacy.Text:GetWide(),0)
             end
@@ -1829,7 +1846,7 @@ if CLIENT then
             SetUISkin(CloudMusic.LoginPrompt)
         end
         CloudMusic.Logout = vgui.Create("DButton",CloudMusic)
-        function CloudMusic.Logout:LangUpdate()
+        function CloudMusic.Logout:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(winw-self:GetWide()-32,30/2-20/2)
@@ -1848,7 +1865,7 @@ if CLIENT then
             end)
         end
         CloudMusic.UserInfo = vgui.Create("DButton",CloudMusic)
-        function CloudMusic.UserInfo:LangUpdate()
+        function CloudMusic.UserInfo:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+10,20)
             self:SetPos(winw-self:GetWide()-CloudMusic.Logout:GetWide()-37,30/2-20/2)
@@ -2021,7 +2038,7 @@ if CLIENT then
         end
         CloudMusic.User = vgui.Create("DHTML",CloudMusic)
         CloudMusic.User:SetSize(winw*0.4,30)
-        function CloudMusic.User:LangUpdate()
+        function CloudMusic.User:CM_LangUpdate()
             self:SetPos(CloudMusic.UserInfo:GetPos()-self:GetWide()-5,0)
         end
         CloudMusic.User:SetMouseInputEnabled(false)
@@ -2032,7 +2049,7 @@ if CLIENT then
             draw.DrawText("Made by Texas", "CloudMusicText", winw-5, 0, Color(202,202,202), TEXT_ALIGN_RIGHT)
         end
         CloudMusic.SettingsButton = vgui.Create("DButton",CloudMusic.Body)
-        function CloudMusic.SettingsButton:LangUpdate()
+        function CloudMusic.SettingsButton:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(winw-self:GetWide()-5,19)
@@ -2053,7 +2070,7 @@ if CLIENT then
         CloudMusic.SonglistForm.Fetch = vgui.Create("DButton",CloudMusic.SonglistForm)
         CloudMusic.SonglistForm.Fetch:SetPos(67,14)
         CloudMusic.SonglistForm.Fetch:SetSize(30,20)
-        function CloudMusic.SonglistForm.Fetch:LangUpdate()
+        function CloudMusic.SonglistForm.Fetch:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(CloudMusic.SonglistForm.Input:GetWide()+5,14)
@@ -2103,7 +2120,7 @@ if CLIENT then
         CloudMusic.SearchForm.Input:SetSize(100,20)
         CloudMusic.SearchForm.Search = vgui.Create("DButton",CloudMusic.SearchForm)
         CloudMusic.SearchForm.Search:SetPos(105,14)
-        function CloudMusic.SearchForm.Search:LangUpdate()
+        function CloudMusic.SearchForm.Search:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,20)
             CloudMusic.SearchForm:SetPos(CloudMusic.SonglistForm:GetWide()+10,5)
@@ -2150,7 +2167,7 @@ if CLIENT then
         end
         CloudMusic.SearchForm.Search.Paint = ButtonPaint
         CloudMusic.ShowRecommend = vgui.Create("DButton",CloudMusic.Body)
-        function CloudMusic.ShowRecommend:LangUpdate()
+        function CloudMusic.ShowRecommend:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(CloudMusic.SearchForm:GetPos()+CloudMusic.SearchForm:GetWide()+10,19)
@@ -2182,7 +2199,7 @@ if CLIENT then
             end)
         end
         CloudMusic.ShowUserPlaylists = vgui.Create("DButton",CloudMusic.Body)
-        function CloudMusic.ShowUserPlaylists:LangUpdate()
+        function CloudMusic.ShowUserPlaylists:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(CloudMusic.ShowRecommend:GetPos()+CloudMusic.ShowRecommend:GetWide()+5,19)
@@ -2486,7 +2503,7 @@ if CLIENT then
         CloudMusic.NextPage = vgui.Create("DButton",CloudMusic.Body)
         CloudMusic.NextPage:SetSize(45,20)
         CloudMusic.NextPage:SetColor(Color(255,255,255))
-        function CloudMusic.NextPage:LangUpdate()
+        function CloudMusic.NextPage:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(winw-10-CloudMusic.Playlist:GetWide()-self:GetWide(),19)
@@ -2520,7 +2537,7 @@ if CLIENT then
         CloudMusic.PrevPage:SetPos(winw-405,19)
         CloudMusic.PrevPage:SetSize(45,20)
         CloudMusic.PrevPage:SetColor(Color(255,255,255))
-        function CloudMusic.PrevPage:LangUpdate()
+        function CloudMusic.PrevPage:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(CloudMusic.NextPage:GetPos()-self:GetWide()-5,19) 
@@ -2767,7 +2784,7 @@ if CLIENT then
             end
         end
         CloudMusic.Player.Prev = vgui.Create("DButton",CloudMusic.Player)
-        function CloudMusic.Player.Prev:LangUpdate()
+        function CloudMusic.Player.Prev:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,18)
             self:SetPos(CloudMusic.Player:GetTall()+5,48)
@@ -2784,7 +2801,7 @@ if CLIENT then
         end
         CloudMusic.Player.PlayPause = vgui.Create("DButton",CloudMusic.Player)
         CloudMusic.Player.PlayPause:CM_SetI18N("play")
-        function CloudMusic.Player.PlayPause:LangUpdate()
+        function CloudMusic.Player.PlayPause:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,18)
             self:SetPos(CloudMusic.Player.Prev:GetPos()+CloudMusic.Player.Prev:GetWide()+5,48)
@@ -2812,7 +2829,7 @@ if CLIENT then
             end
         end
         CloudMusic.Player.Next = vgui.Create("DButton",CloudMusic.Player)
-        function CloudMusic.Player.Next:LangUpdate()
+        function CloudMusic.Player.Next:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,18)
             self:SetPos(CloudMusic.Player.PlayPause:GetPos()+CloudMusic.Player.PlayPause:GetWide()+5,48)
@@ -2829,7 +2846,7 @@ if CLIENT then
         end
         CloudMusic.Player.Mode = vgui.Create("DButton",CloudMusic.Player)
         CloudMusic.Player.Mode:CM_SetI18N("list_loop")
-        function CloudMusic.Player.Mode:LangUpdate()
+        function CloudMusic.Player.Mode:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,18)
             self:SetPos(CloudMusic.Player.Next:GetPos()+CloudMusic.Player.Next:GetWide()+5,48)
@@ -2859,7 +2876,7 @@ if CLIENT then
             end
         end
         CloudMusic.Player.CopyLink = vgui.Create("DButton",CloudMusic.Player)
-        function CloudMusic.Player.CopyLink:LangUpdate()
+        function CloudMusic.Player.CopyLink:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(CloudMusic.Player:GetWide()-self:GetWide(),0)
@@ -2870,7 +2887,7 @@ if CLIENT then
         end
         CloudMusic.Player.CopyLink.Paint = ButtonPaint
         CloudMusic.Player.VolumeEnhance = vgui.Create("DButton",CloudMusic.Player)
-        function CloudMusic.Player.VolumeEnhance:LangUpdate()
+        function CloudMusic.Player.VolumeEnhance:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(CloudMusic.Player.CopyLink:GetPos()-self:GetWide()-5,0)
@@ -3331,15 +3348,14 @@ if CLIENT then
         sTitle:Dock(TOP)
         sTitle:DockMargin(0,0,0,5)
         sTitle:SetFont("CloudMusicSubTitle")
-        function sTitle:LangUpdate()
+        function sTitle:CM_LangUpdate()
             self:SizeToContents()
         end
         sTitle:CM_SetI18N("settings")
         local sBack = CloudMusic.Settings:Add("DButton")
-        function sBack:LangUpdate()
+        function sBack:CM_LangUpdate()
             self:SizeToContents()
-            surface.SetFont("CloudMusicSubTitle")
-            self:SetPos(surface.GetTextSize(GetText("settings"))+15,7)
+            self:SetPos(sTitle:GetWide()+15,7)
             self:SetSize(self:GetWide(),20)
         end
         sBack:CM_SetI18N("back")
@@ -3364,7 +3380,7 @@ if CLIENT then
             end
             local text = vgui.Create("DLabel",option)
             text:SetFont("CloudMusicText")
-            function text:LangUpdate()
+            function text:CM_LangUpdate()
                 self:SizeToContents()
             end
             text:CM_SetI18N(name)
@@ -3456,7 +3472,7 @@ if CLIENT then
         clpanel.LyricSize:SetValue(GetSettings("CloudMusicLyricSize"))
         clpanel.LyricSize:SetVisible(GetSettings("CloudMusicLyricCentered"))
         clpanel.LyricSize.OldValueChanged = clpanel.LyricSize.ValueChanged
-        function clpanel.LyricSize:LangUpdate()
+        function clpanel.LyricSize:CM_LangUpdate()
             self:SetPos(cltext:GetPos()+cltext:GetSize()+5,0)
         end
         function clpanel.LyricSize:ValueChanged(val)
@@ -3467,7 +3483,7 @@ if CLIENT then
         clpanel.LyricSize:CM_SetI18N("lyric_size")
         local usOpt = CloudMusic.Settings:AddSelect("use_server_link","CloudMusicUseServer")
         usOpt:CM_SetI18N("use_server_link_tip",I18N_PLACEHOLDER)
-        function usOpt:LangUpdate()
+        function usOpt:CM_LangUpdate()
             self:CM_SetTooltip(GetText("use_server_link_tip"))
         end
         CloudMusic.Settings:AddSelect("hud_text_shadow","CloudMusicHUDTextShadow",function(val)
@@ -3480,7 +3496,7 @@ if CLIENT then
         hpText:SetFont("CloudMusicText")
         hpText:CM_SetI18N("hud_pos")
         local hpBtn = vgui.Create("DButton",hpPnl)
-        function hpBtn:LangUpdate()
+        function hpBtn:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,20)
             self:SetPos(hpText:GetPos()+hpText:GetSize(),0)
@@ -3527,6 +3543,9 @@ if CLIENT then
             title:SetFont("CloudMusicText")
             title:CM_SetI18N(name)
             title:Dock(TOP)
+            if not ColorValid(GetSettings(bindName)) then
+                SetSettings(bindName,defaultSettings[bindName])
+            end
             local mixer = self:Add("DColorMixer")
             mixer:SetSize(150,200)
             mixer:SetAlphaBar(false)
@@ -3623,7 +3642,7 @@ if CLIENT then
             w.Status = vgui.Create("DLabel",w)
             w.Status:SetPos(70,5+select(2,w.Name:GetSize()))
             w.Status:SetFont("CloudMusicText")
-            function w.Status:LangUpdate()
+            function w.Status:CM_LangUpdate()
                 self:SizeToContents()
             end
             w.Status:CM_SetI18N("wait")
@@ -3930,13 +3949,13 @@ if CLIENT then
             local desc = vgui.Create("DLabel",w)
             desc:SetPos(5,10+title:GetTall())
             desc:SetFont("CloudMusicText")
-            function desc:LangUpdate()
+            function desc:CM_LangUpdate()
                 self:SetText(GetText("description").."\n"..GetText("advice"))
                 self:SizeToContents()
             end
             desc:CM_SetI18N("description",I18N_PLACEHOLDER)
             local contact = vgui.Create("DButton",w)
-            function contact:LangUpdate()
+            function contact:CM_LangUpdate()
                 self:SizeToContents()
                 self:SetSize(self:GetWide()+3,20)
                 self:SetPos(5,select(2,desc:GetPos())+desc:GetTall()+5)
@@ -3947,7 +3966,7 @@ if CLIENT then
             end
             contact.Paint = ButtonPaint
             local donate = vgui.Create("DButton",w)
-            function donate:LangUpdate()
+            function donate:CM_LangUpdate()
                 self:SizeToContents()
                 self:SetSize(self:GetWide()+3,20)
                 self:SetPos(5,select(2,contact:GetPos())+contact:GetTall()+5)
