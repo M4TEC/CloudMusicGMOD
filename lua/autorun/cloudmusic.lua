@@ -117,6 +117,7 @@ if CLIENT then
             ["enable_3dplay"] = "打开3D外放",
             ["bypass_3dplay"] = "屏蔽他人3D外放",
             ["public_info"] = "公开播放信息",
+            ["voice_volume_control"] = "语音时自动控制音量",
             ["center_lyric"] = "歌词置于游戏界面底部中央",
             ["hud_pos"] = "HUD位置",
             ["use_server_link"] = "使用服务器获取链接（VIP歌曲相关）",
@@ -281,6 +282,7 @@ if CLIENT then
             ["enable_3dplay"] = "啟用3D外放",
             ["bypass_3dplay"] = "遮蔽他人3D外放",
             ["public_info"] = "公開播放信息",
+            ["voice_volume_control"] = "語音時自動控制音量",
             ["center_lyric"] = "歌詞置中",
             ["hud_pos"] = "HUD位置",
             ["use_server_link"] = "使用伺服器取得鏈結（VIP歌曲相關）",
@@ -320,6 +322,7 @@ if CLIENT then
             ["hud_fft_color"] = "HUD動畫顏色",
             ["contact"] = "聯絡Texas",
             ["donate"] = "贊助作者",
+            ["no_info"] = "暫無信息，對方可能未播放音樂或未開放信息",
             ["lyricfailed"] = "無法取得 %name% 的歌詞",
             ["lyricfailed_detail"] = "無法取得 %name% 的歌詞（%msg%）",
             ["nolyric"] = "%name% 暫無歌詞",
@@ -444,6 +447,7 @@ if CLIENT then
             ["enable_3dplay"] = "Enable 3D Play",
             ["bypass_3dplay"] = "Bypass 3D Play from others",
             ["public_info"] = "Public playing music information",
+            ["voice_volume_control"] = "Automatically control volume when voice",
             ["center_lyric"] = "Display centered lyric in the bottom of the game",
             ["hud_pos"] = "HUD Position",
             ["use_server_link"] = "Use server to fetch link",
@@ -483,6 +487,7 @@ if CLIENT then
             ["hud_fft_color"] = "HUD FFT Color",
             ["contact"] = "Contact Texas",
             ["donate"] = "Donate Me",
+            ["no_info"] = "No information, maybe this player isn't using Cloud Music or didn't public information",
             ["lyricfailed"] = "Failed to fetch %name%'s lyric",
             ["lyricfailed_detail"] = "Failed to fetch %name%'s lyric (%msg%)",
             ["nolyric"] = "%name% has no lyric",
@@ -566,6 +571,7 @@ if CLIENT then
             ["CloudMusicHUDFFT"] = false,
             ["CloudMusicVolume"] = 1,
             ["CloudMusicVolumeEnhance"] = false,
+            ["CloudMusicVoiceVolumeControl"] = true,
             ["CloudMusicHUDTextShadow"] = true,
             ["CloudMusicPublicInfo"] = true,
             ["CloudMusicLyricCentered"] = false,
@@ -1091,11 +1097,13 @@ if CLIENT then
             if IsValid(ply) and not ply.ChannelCreating then
                 ply.ChannelCreating = true
                 GetSongURL(id,function(url)
-                    sound.PlayURL(url,"noblock 3d",function(station,errid,errname)
+                    sound.PlayURL(url,"noblock 3d noplay",function(station,errid,errname)
                         if IsValid(station) and IsValid(ply) then
                             table.insert(channelPlayers, {ply,station,ply:SteamID64()})
                             ply.CM_MusicChannel = station
                             ply.CM_MusicChannelID = id
+                            station:SetVolume(ply.CM_MusicChannelVolume)
+                            station:Play()
                             net.Start("CloudMusicReqSync")
                             net.SendToServer()
                         else
@@ -2578,11 +2586,12 @@ if CLIENT then
             AddProgress("CloudMusicBuffering",self.CurrentPlaying.Name.." - "..self.CurrentPlaying.Artist,GetText("try_play"))
             GetSongURL(cId,function(url)
                 Print("Fetch song url successed")
-                sound.PlayURL(url, "noblock", function(station,errid,errname)
+                sound.PlayURL(url, "noblock noplay", function(station,errid,errname)
                     buffering = false
                     RemoveProgress("CloudMusicBuffering")
                     if IsValid(station) then
                         if self.CurrentPlaying ~= nil and self.CurrentPlaying.ID == cId and not IsValid(self.CurrentChannel) then
+                            station:SetVolume(CloudMusic.Volume)
                             station:Play()
                             self.CurrentChannel = station
                             FetchLyric()
@@ -3438,6 +3447,7 @@ if CLIENT then
                 CloudMusic.HUD:RunJavascript("setLyricCentered(false);")
             end
         end)
+        CloudMusic.Settings:AddSelect("voice_volume_control","CloudMusicVoiceVolumeControl")
         clpanel.LyricSize = vgui.Create("DNumSlider",clpanel)
         clpanel.LyricSize:SetSize(150,20)
         clpanel.LyricSize:SetMin(18)
@@ -4104,10 +4114,12 @@ if CLIENT then
             end
         end)
         hook.Add("PlayerStartVoice","CloudMusic_PlayerStartVoice",function()
-            speaking = true
-            for _,v in pairs(player.GetAll()) do
-                if IsValid(v.CM_MusicChannel) then
-                    v.CM_MusicChannel:SetVolume(v.CM_MusicChannel:GetVolume() * 0.5)
+            if GetSettings("CloudMusicVoiceVolumeControl") then
+                speaking = true
+                for _,v in pairs(player.GetAll()) do
+                    if IsValid(v.CM_MusicChannel) then
+                        v.CM_MusicChannel:SetVolume(v.CM_MusicChannel:GetVolume() * 0.5)
+                    end
                 end
             end
         end)
