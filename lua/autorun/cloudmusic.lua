@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200227" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200228" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -727,7 +727,7 @@ if CLIENT then
                 text:SetFont("CloudMusicText")
                 text:SizeToContents()
                 text:SetPos(2.5,0)
-                panel:SetSize(5+text:GetSize(),select(2,text:GetSize()))
+                panel:SetSize(5+text:GetWide(),text:GetTall())
                 function panel:Paint()
                     local alpha = self:GetAlpha()
                     if alpha == 0 then
@@ -735,10 +735,10 @@ if CLIENT then
                     end
                     surface.SetDrawColor(0,0,0,alpha)
                     DisableClipping(true)
-                    surface.DrawRect(-1, -1, self:GetSize()+2, select(2,self:GetSize())+2)
+                    surface.DrawRect(-1, -1, self:GetWide()+2, self:GetTall()+2)
                     DisableClipping(false)
                     surface.SetDrawColor(255,255,255,alpha)
-                    surface.DrawRect(0, 0, self:GetSize(), select(2,self:GetSize()))
+                    surface.DrawRect(0, 0, self:GetWide(), self:GetTall())
                     if r:IsHovered() then
                         if alpha ~= 255 then
                             if GetSettings("CloudMusicAnimation") then
@@ -1549,7 +1549,7 @@ if CLIENT then
                 if IsValid(lastHoverPanel) then
                     if panel.HoverTime ~= nil and lastHoverPanel == panel and SysTime() - panel.HoverTime >= 1 and IsValid(panel.TooltipPanel) then
                         local cx,cy = self:CursorPos()
-                        panel.TooltipPanel:SetPos(cx+1,cy-select(2,panel.TooltipPanel:GetSize())-2)
+                        panel.TooltipPanel:SetPos(cx+1,cy-panel.TooltipPanel:GetTall()-2)
                         if not panel.TooltipPanel:IsVisible() then
                             if GetSettings("CloudMusicAnimation") then
                                 panel.TooltipPanel:SetAlpha(1)
@@ -1694,7 +1694,7 @@ if CLIENT then
                         self:SetPos(x,y)
                     end
                 end
-                if select(2,self:GetPos()) <= -select(2,self:GetSize()) then self:Remove() end
+                if select(2,self:GetPos()) <= -self:GetTall() then self:Remove() end
             end
             CloudMusic.LoginPrompt.Title = vgui.Create("DLabel",CloudMusic.LoginPrompt)
             CloudMusic.LoginPrompt.Title:CM_SetI18N("login_title")
@@ -1840,7 +1840,7 @@ if CLIENT then
             CloudMusic.LoginPrompt.Cancel:CM_SetI18N("cancel")
             function CloudMusic.LoginPrompt.Cancel:DoClick()
                 oy = select(2,CloudMusic.LoginPrompt:GetPos())
-                y = -select(2,CloudMusic.LoginPrompt:GetSize())
+                y = -CloudMusic.LoginPrompt:GetTall()
                 HideOverlay()
             end
             SetUISkin(CloudMusic.LoginPrompt)
@@ -1894,7 +1894,7 @@ if CLIENT then
                         self:SetPos(x,y)
                     end
                 end
-                if select(2,self:GetPos()) <= -select(2,self:GetSize()) then self:Remove() end
+                if select(2,self:GetPos()) <= -self:GetTall() then self:Remove() end
             end
             if userDetail["backgroundUrl"] ~= nil then
                 CloudMusic.UInfo.Background = vgui.Create("DHTML", CloudMusic.UInfo)
@@ -2011,7 +2011,7 @@ if CLIENT then
             CloudMusic.UInfo.Close:CM_SetI18N("close")
             function CloudMusic.UInfo.Close:DoClick()
                 oy = select(2,CloudMusic.UInfo:GetPos())
-                y = -select(2,CloudMusic.UInfo:GetSize())
+                y = -CloudMusic.UInfo:GetTall()
                 HideOverlay()
             end
             Print("Fetching user details")
@@ -3494,12 +3494,15 @@ if CLIENT then
         hpPnl.Paint = nil
         local hpText = vgui.Create("DLabel",hpPnl)
         hpText:SetFont("CloudMusicText")
+        function hpText:CM_LangUpdate()
+            self:SizeToContents()
+        end
         hpText:CM_SetI18N("hud_pos")
         local hpBtn = vgui.Create("DButton",hpPnl)
         function hpBtn:CM_LangUpdate()
             self:SizeToContents()
             self:SetSize(self:GetWide()+3,20)
-            self:SetPos(hpText:GetPos()+hpText:GetSize(),0)
+            self:SetPos(hpText:GetPos()+hpText:GetSize()+5,0)
         end
         function hpBtn:DoClick()
             if GetSettings("CloudMusicHudPos") == "top-left" then
@@ -3528,14 +3531,14 @@ if CLIENT then
         hpBtn.Paint = ButtonPaint
         local uiColorTitle = CloudMusic.Settings:Add("DLabel")
         uiColorTitle:Dock(TOP)
+        uiColorTitle:DockMargin((winw-500)/2,0,0,0)
         uiColorTitle:SetFont("CloudMusicSubTitle")
         uiColorTitle:CM_SetI18N("ui_color")
         local colors = CloudMusic.Settings:Add("DScrollPanel")
         colors:Dock(TOP)
-        colors._Paint = colors.Paint
-        function colors:Paint(...)
-            self:_Paint(...)
-            self:SetSize(select(2,CloudMusic.Settings:GetSize())-10,300)
+        colors:SetSize(0,300)
+        if winw > 500 then
+            colors:DockMargin((winw-500)/2,0,(winw-500)/2,0)
         end
         function colors:AddColorOption(name,bindName,callback)
             local title = self:Add("DLabel")
@@ -3628,7 +3631,7 @@ if CLIENT then
                         self:SetPos(x,y)
                     end
                 end
-                if select(2,self:GetPos()) <= -select(2,self:GetSize()) then self:Remove() end
+                if select(2,self:GetPos()) <= -self:GetTall() then self:Remove() end
             end
             w.Avatar = vgui.Create("AvatarImage",w)
             w.Avatar:SetPos(5,5)
@@ -3640,7 +3643,7 @@ if CLIENT then
             w.Name:SetText(p:Nick())
             w.Name:SizeToContents()
             w.Status = vgui.Create("DLabel",w)
-            w.Status:SetPos(70,5+select(2,w.Name:GetSize()))
+            w.Status:SetPos(70,5+w.Name:GetTall())
             w.Status:SetFont("CloudMusicText")
             function w.Status:CM_LangUpdate()
                 self:SizeToContents()
@@ -3658,12 +3661,12 @@ if CLIENT then
             w.Details:SetFont("CloudMusicText")
             w.Details:SetVisible(false)
             w.Close = vgui.Create("DButton",w)
-            w.Close:SetPos(5,select(2,w:GetSize())-25)
+            w.Close:SetPos(5,w:GetTall()-25)
             w.Close:SetSize(w:GetSize()-10,20)
             w.Close:CM_SetI18N("close")
             function w.Close:DoClick()
                 oy = select(2,w:GetPos())
-                y = -select(2,w:GetSize())
+                y = -w:GetTall()
                 HideOverlay()
             end
             function w:UpdateInfo()
@@ -3686,7 +3689,7 @@ if CLIENT then
                     ]])
                     self.SongName:SetText(p.CM_MusicInfo["Name"])
                     self.SongName:SizeToContents()
-                    self.Details:SetPos(70,74+select(2,self.SongName:GetSize()))
+                    self.Details:SetPos(70,74+self.SongName:GetTall())
                     self.Details:SetText(p.CM_MusicInfo["Artists"].." - "..p.CM_MusicInfo["Album"])
                     self.Details:SizeToContents()
                     self.Thumbnail:SetVisible(true)
