@@ -15,34 +15,38 @@ local settingsMeta = {
         return rawget(tbl,"CloudMusic"..index)
     end
 }
-DefaultSettings = {
+CloudMusic.DefaultSettings = {
     ["CloudMusicAnimation"] = true,
     ["CloudMusicAnimationTime"] = 0.3,
     ["CloudMusicTitleBarTextColor"] = Color(255,255,255),
     ["CloudMusicTitleBarColor"] = Color(102,204,255),
-    ["CloudMusicBackgroundColor"] = Color(255,255,255)
+    ["CloudMusicBackgroundColor"] = Color(255,255,255),
+    ["CloudMusicButtonTextColor"] = Color(255,255,255),
+    ["CloudMusicButtonColor"] = Color(102,204,255),
+    ["CloudMusicButtonHoverColor"] = Color(0,153,230),
+    ["CloudMusicButtonActivateColor"] = Color(0,86,130),
 }
-Settings = table.Copy(DefaultSettings)
+CloudMusic.Settings = table.Copy(CloudMusic.DefaultSettings)
 function SaveSettings()
-    local temp = table.Copy(Settings)
+    local temp = table.Copy(CloudMusic.Settings)
     temp["version"] = FORMAT_VERSION
     file.Write(path, util.Compress(util.TableToJSON(temp)))
-    Print("User settings saved")
+    CM_Print("User settings saved")
 end
 function LoadSettings()
     if not file.Exists(path, "DATA") then
         SaveSettings()
-        Print("No settings file, creating a new file")
+        CM_Print("No settings file, creating a new file")
     end
     local json = util.JSONToTable(util.Decompress(file.Read(path)))
     if not json then
         SaveSettings()
-        Print("Invalid settings file, resetting settings file")
+        CM_Print("Invalid settings file, resetting settings file")
     else
         if json["version"] ~= FORMAT_VERSION then
             SaveSettings()
-            json = Settings
-            Print("Settings file version is different from current version, resetting setttings file")
+            json = CloudMusic.DefaultSettings
+            CM_Print("Settings file version is different from current version, resetting setttings file")
         end
         local index = 0
         for k,_ in ipairs(json) do
@@ -51,14 +55,16 @@ function LoadSettings()
             end
             index = index + 1
         end
-        for k,v in pairs(DefaultSettings) do
+        for k,v in pairs(CloudMusic.DefaultSettings) do
             if json[k] == nil then
                 json[k] = v
             end
         end
-        Settings = json
+        CloudMusic.Settings = json
         SaveSettings()
-        setmetatable(Settings, settingsMeta)
-        Print("User settings loaded")
+        setmetatable(CloudMusic.Settings, settingsMeta)
+        CM_Print("User settings loaded")
     end
 end
+concommand.Add("cloudmusic_load_settings", LoadSettings, nil, "Reload Cloud Music Settings", FCVAR_LUA_CLIENT)
+concommand.Add("cloudmusic_save_settings", SaveSettings, nil, "Save Cloud Music Settings", FCVAR_LUA_CLIENT)

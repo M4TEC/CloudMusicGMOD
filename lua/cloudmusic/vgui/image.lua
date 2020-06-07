@@ -1,5 +1,6 @@
 local PANEL = {}
 AccessorFunc(PANEL,"m_AutoSizing","AutoSizing",FORCE_BOOL)
+AccessorFunc(PANEL,"m_ResponseLayout","ResponseLayout",FORCE_BOOL)
 function PANEL:Init()
     self.m_HTML = vgui.Create("DHTML", self)
     self.m_HTML:Dock(FILL)
@@ -17,6 +18,7 @@ function PANEL:Init()
     end
 
     self:SetAutoSizing(false)
+    self:SetResponseLayout(true)
 end
 function PANEL:Paint()end
 function PANEL:SetImage(url,width,height)
@@ -27,7 +29,7 @@ function PANEL:SetImage(url,width,height)
     self.m_ImageHeight = height
 
     self.m_HTML:SetHTML([[
-        <img src="]]..url..[[" style="position:fixed;top:0;left:0;width:]]..width..[[px;height:]]..height..[[px;" onload="img.realSize(this.naturalWidth,this.naturalHeight);"/>
+        <img src="]]..url..[[" style="position:fixed;top:0;left:0;width:]]..width..[[px;height:]]..height..[[px;" onload="window.rptitv = setInterval(function() {if (window.img != undefined && img.realSize != undefined) {img.realSize(this.naturalWidth,this.naturalHeight);clearInterval(rptitv);}},10);"/>
     ]])
 end
 function PANEL:SizeToContents()
@@ -52,7 +54,7 @@ function PANEL:GetMaxWide()
     return self.m_MaxWide or self:GetWide()
 end
 function PANEL:PerformLayout(width,height)
-    if self.m_Image then
+    if self.m_Image and self.m_ResponseLayout then
         if self.m_ImageWide ~= width or self.m_ImageHeight ~= height then
             self:SetImage(self.m_Image,width,height)
         end
