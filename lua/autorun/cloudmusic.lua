@@ -175,7 +175,9 @@ if CLIENT then
             ["modified"] = "（修改版，不受支持）",
             ["cm_usable"] = "尝试使用Cloud Music",
             ["instruction"] = "你可以在聊天框输入!cm或!cloudmusic打开网易云音乐播放器\n或者按下Alt+↓使用快捷键打开",
-            ["verbose_help"] = "启用网易云播放器啰嗦模式"
+            ["verbose_help"] = "启用网易云播放器啰嗦模式",
+            ["reinit"] = "重新初始化",
+            ["sure_to_reinit"] = "确定重新初始化吗？"
         },
         ["zh-TW"] = {
             ["title"] = "網易雲音樂",
@@ -340,7 +342,9 @@ if CLIENT then
             ["modified"] = "（修改版，不受支持）",
             ["cm_usable"] = "嘗試使用Cloud Music",
             ["instruction"] = "你可以在聊天框輸入!cm或!cloudmusic打開網易云音樂播放器\n或者按下Alt+↓使用快捷鍵打開",
-            ["verbose_help"] = "啟用網易雲播放器囉嗦模式"
+            ["verbose_help"] = "啟用網易雲播放器囉嗦模式",
+            ["reinit"] = "重新初始化",
+            ["sure_to_reinit"] = "確定重新初始化嗎？"
         },
         ["en"] = {
             ["title"] = "Netease Cloud Music",
@@ -505,7 +509,9 @@ if CLIENT then
             ["modified"] = " (Modified Version, No support provided)",
             ["cm_usable"] = "Try to use Cloud Music",
             ["instruction"] = "You can type !cm or !cloudmusic in chatbox to open Cloud Music player\nor press Alt+↓ to open it with shortcut keys",
-            ["verbose_help"] = "Enable verbose mode of Cloud Music player"
+            ["verbose_help"] = "Enable verbose mode of Cloud Music player",
+            ["reinit"] = "Reinitialize",
+            ["sure_to_reinit"] = "Are you sure to reinitialize?"
         }
     }
     local I18N_LIST = {}
@@ -1307,7 +1313,7 @@ if CLIENT then
             CloudMusic.User:SetVisible(false)
             CloudMusic.ShowRecommend:SetVisible(false)
             CloudMusic.ShowUserPlaylists:SetVisible(false)
-            CloudMusic.OpenFM:SetVisible(false)
+            --CloudMusic.OpenFM:SetVisible(false)
             CloudMusic.User:CM_RemoveI18N()
             if GetSettings("CloudMusicUserToken") == "" then
                 Print("No user token, using default layout")
@@ -1340,7 +1346,7 @@ if CLIENT then
                     CloudMusic.UserInfo:SetVisible(true)
                     CloudMusic.ShowRecommend:SetVisible(true)
                     CloudMusic.ShowUserPlaylists:SetVisible(true)
-                    CloudMusic.OpenFM:SetVisible(true)
+                    --CloudMusic.OpenFM:SetVisible(true)
                     function CloudMusic.User:SetText(str)
                         if self.last ~= str then
                             self:ReloadProfile()
@@ -1460,7 +1466,7 @@ if CLIENT then
             CloudMusic.SearchForm.Search:SetDisabled(disabled)
             CloudMusic.ShowUserPlaylists:SetDisabled(disabled)
             CloudMusic.ShowRecommend:SetDisabled(disabled)
-            CloudMusic.OpenFM:SetDisabled(disabled)
+            --CloudMusic.OpenFM:SetDisabled(disabled)
         end
         local function HttpGet(url,success,fail,headers,finally)
             if headers == nil then headers = {} end
