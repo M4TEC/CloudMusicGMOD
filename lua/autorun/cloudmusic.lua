@@ -2126,7 +2126,7 @@ if CLIENT then
                 end
                 CloudMusic.PrevPage:SetVisible(false)
                 CloudMusic.NextPage:SetVisible(false)
-                CloudMusic.Songlist:Resolve(obj["playlist"]["tracks"])
+                CloudMusic.Songlist:Resolve(obj["playlist"]["tracks"], true)
                 CloudMusic.Songlist:SetVisible(true)
                 CloudMusic.Playlists:SetVisible(false)
                 Print("Fetch playlist successed")
@@ -2289,7 +2289,7 @@ if CLIENT then
         function CloudMusic.Songlist:OnRowRightClick(lineID, line)
             self:ShowMenu()
         end
-        function CloudMusic.Songlist:Resolve(tracks)
+        function CloudMusic.Songlist:Resolve(tracks, specList)
             if tracks == nil then SetDMUISkin(Derma_Message(GetText("empty_playlist_msg"), GetText("empty_playlist"), GetText("ok"))) end
             CloudMusic.Songs = {}
             if #self:GetLines() ~= 0 then
@@ -2300,19 +2300,19 @@ if CLIENT then
             for i=1,#tracks do
                 local track = tracks[i]
                 local artist = ""
-                for j=1,#track["ar"] do
+                for j=1,#track[specList and "ar" or "artists"] do
                     if j ~= 1 then
                         artist = artist .. ", "
                     end
-                    artist = artist .. track["ar"][j]["name"]
+                    artist = artist .. track[specList and "ar" or "artists"][j]["name"]
                 end
-                self:AddLine(track["name"],artist,track["al"]["name"],track["id"])
+                self:AddLine(track["name"],artist,track[specList and "al" or "album"]["name"],track["id"])
                 table.insert(CloudMusic.Songs,{
                     Name = track["name"],
                     Artist = artist,
-                    Album = track["al"]["name"],
+                    Album = track[specList and "al" or "album"]["name"],
                     ID = track["id"],
-                    Thumbnail = track["al"]["picUrl"]
+                    Thumbnail = track[specList and "al" or "album"]["picUrl"]
                 })
             end
             SetUISkin(self)
@@ -2383,7 +2383,7 @@ if CLIENT then
                 end
                 CloudMusic.PrevPage:SetVisible(false)
                 CloudMusic.NextPage:SetVisible(false)
-                CloudMusic.Songlist:Resolve(obj["playlist"]["tracks"])
+                CloudMusic.Songlist:Resolve(obj["playlist"]["tracks"], true)
                 CloudMusic.Songlist:SetVisible(true)
                 self:SetVisible(false)
             end, function()SetDMUISkin(Derma_Message(GetText("playlistfailed"), GetText("error"), GetText("ok")))end)
@@ -2413,7 +2413,7 @@ if CLIENT then
                     end
                     CloudMusic.PrevPage:SetVisible(false)
                     CloudMusic.NextPage:SetVisible(false)
-                    CloudMusic.Songlist:Resolve(obj["playlist"]["tracks"])
+                    CloudMusic.Songlist:Resolve(obj["playlist"]["tracks"], true)
                     CloudMusic.Songlist:SetVisible(true)
                     self:SetVisible(false)
                 end, function()SetDMUISkin(Derma_Message(GetText("playlistfailed"), GetText("error"), GetText("ok")))end)
