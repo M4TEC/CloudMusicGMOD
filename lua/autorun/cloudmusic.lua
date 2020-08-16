@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200807" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200816" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -1891,7 +1891,7 @@ if CLIENT then
             panel.Cancel:SetSize(350-20,20)
             panel.Cancel:CM_SetI18N("cancel")
             function panel.Cancel:DoClick()
-                panel.ClosePanel()
+                panel:ClosePanel()
             end
             SetUISkin(panel)
             panel:ShowPanel()
