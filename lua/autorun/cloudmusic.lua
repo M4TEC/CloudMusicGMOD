@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200816" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1.5.0 Beta 20200816 (With 20201226 FIX)" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -126,7 +126,7 @@ if CLIENT then
             ["ui_color"] = "界面颜色",
             ["player_list"] = "玩家列表",
             ["custom_css"] = "自定义HUD CSS",
-            ["description"] = "本播放器由Texas制作，歌词功能使用了Cloudflare Worker进行简化处理",
+            ["description"] = "本播放器由Texas制作，使用独立服务器进行数据处理",
             ["advice"] = "建议游戏分辨率设为1366x768或以上",
             ["lyric_size"] = "歌词大小",
             ["player_name"] = "玩家名字",
@@ -177,7 +177,9 @@ if CLIENT then
             ["instruction"] = "你可以在聊天框输入!cm或!cloudmusic打开网易云音乐播放器\n或者按下Alt+↓使用快捷键打开",
             ["verbose_help"] = "启用网易云播放器啰嗦模式",
             ["reinit"] = "重新初始化",
-            ["sure_to_reinit"] = "确定重新初始化吗？"
+            ["sure_to_reinit"] = "确定重新初始化吗？",
+            ["bug_report_workshop"] = "在Steam创意工坊反馈",
+            ["bug_report_github"] = "在GitHub反馈"
         },
         ["zh-TW"] = {
             ["title"] = "網易雲音樂",
@@ -293,7 +295,7 @@ if CLIENT then
             ["ui_color"] = "視窗顏色",
             ["player_list"] = "玩家列表",
             ["custom_css"] = "自訂HUD CSS",
-            ["description"] = "本播放器Texas製作，歌詞功能使用了Cloudflare Worker進行簡化處理，由TLExpress翻譯",
+            ["description"] = "本播放器Texas製作，使用了独立伺服器进行档案处理，由TLExpress翻譯",
             ["advice"] = "建議將遊戲解析度設定為1366x768或以上",
             ["lyric_size"] = "歌詞大小",
             ["player_name"] = "玩家名稱",
@@ -344,7 +346,9 @@ if CLIENT then
             ["instruction"] = "你可以在聊天框輸入!cm或!cloudmusic打開網易云音樂播放器\n或者按下Alt+↓使用快捷鍵打開",
             ["verbose_help"] = "啟用網易雲播放器囉嗦模式",
             ["reinit"] = "重新初始化",
-            ["sure_to_reinit"] = "確定重新初始化嗎？"
+            ["sure_to_reinit"] = "確定重新初始化嗎？",
+            ["bug_report_workshop"] = "在Steam创意工坊反馈",
+            ["bug_report_github"] = "在GitHub反馈"
         },
         ["en"] = {
             ["title"] = "Netease Cloud Music",
@@ -460,7 +464,7 @@ if CLIENT then
             ["ui_color"] = "UI Color",
             ["player_list"] = "Player List",
             ["custom_css"] = "Custom HUD CSS",
-            ["description"] = "This player made by Texas, The lyrics used Cloudflare Worker to process.",
+            ["description"] = "This player made by Texas, Used dedicated server for data processing.",
             ["advice"] = "Recommend set your game resolution to 1366x768 or higher",
             ["lyric_size"] = "Lyric size",
             ["player_name"] = "Player Name",
@@ -511,7 +515,9 @@ if CLIENT then
             ["instruction"] = "You can type !cm or !cloudmusic in chatbox to open Cloud Music player\nor press Alt+↓ to open it with shortcut keys",
             ["verbose_help"] = "Enable verbose mode of Cloud Music player",
             ["reinit"] = "Reinitialize",
-            ["sure_to_reinit"] = "Are you sure to reinitialize?"
+            ["sure_to_reinit"] = "Are you sure to reinitialize?",
+            ["bug_report_workshop"] = "Report bug at Workshop",
+            ["bug_report_github"] = "Report bug at GitHub"
         }
     }
     local I18N_LIST = {}
@@ -932,18 +938,18 @@ if CLIENT then
             lrcStartPos = 1
             transLrcStartPos = 1
             Print("Fetching the lyric of "..currentPlaying.Name)
-            http.Fetch("http://api.texl.top/netease/lyric/?id="..CloudMusic.CurrentPlaying.ID, function(body)
+            http.Fetch("http://gcm.tenmahw.com/resolve/lyric/?u="..LocalPlayer():SteamID64().."&id="..CloudMusic.CurrentPlaying.ID, function(body)
                 local json = util.JSONToTable(body)
                 if not json then
                     AddMessage(GetText("lyricfailed",{"name",currentPlaying.Name}),nil,3000,"error")
                     Print("Failed to fetch the lyric of "..currentPlaying.Name)
                     return
                 end
-                if json["code"] ~= 200 then
+                --[[if json["code"] ~= 200 then
                     AddMessage(GetText("lyricfailed_detail",{"name",currentPlaying.Name},{"msg",json["msg"]}),nil,3000,"error");
                     Print("Failed to fetch the lyric of "..currentPlaying.Name.." because "..json["msg"])
                     return
-                end
+                end]]
                 if json["lyric"] == nil or json["lyric"] == "" or not json["lyric"]["lrc"] then
                     AddMessage(GetText("nolyric",{"name",currentPlaying.Name}))
                     Print("Song "..currentPlaying.Name.." doesn't have a lyric")
@@ -1087,7 +1093,7 @@ if CLIENT then
         end
         local function GetSongURL(id,callback,finally,share)
             if GetSettings("CloudMusicUseServer") then
-                TokenRequest("https://cm.luotianyi.me/api/song/url?id="..id..(share == nil and "" or "&share="..share),function(body)
+                TokenRequest("https://gcm.tenmahw.com/song/url?u="..LocalPlayer():SteamID64().."&id="..id..(share == nil and "" or "&share="..share),function(body)
                     local result = util.JSONToTable(body)
                     if not result or not result["data"] or not result["data"][1] or not result["data"][1]["url"] then
                         if type(callback) == "function" then
@@ -1320,7 +1326,7 @@ if CLIENT then
                 CloudMusic.Login:SetVisible(true)
             else
                 Print("User token detected, try to fetch user info")
-                TokenRequest("https://cm.luotianyi.me/api/login/status?u="..LocalPlayer():SteamID64().."&t="..os.time(),function(body)
+                TokenRequest("https://gcm.tenmahw.com/login/status?u="..LocalPlayer():SteamID64().."&t="..os.time(),function(body)
                     userDetail = util.JSONToTable(body)
                     if userDetail == nil or (userDetail["code"] ~= 200 and userDetail["code"] ~= 301) then
                         AddMessage(GetText("userinfofailed"),nil,3000,"error")
@@ -1442,7 +1448,7 @@ if CLIENT then
                     end
                     CloudMusic.User:CM_SetI18N("welcome")
                     CloudMusic.User:SetVisible(true)
-                    TokenRequest("https://cm.luotianyi.me/api/user/detail?uid="..userDetail["userId"],function(body)
+                    TokenRequest("https://gcm.tenmahw.com/user/detail?u="..LocalPlayer():SteamID64().."&uid="..userDetail["userId"],function(body)
                         local json = util.JSONToTable(body)
                         if not json or json["code"] ~= 200 then
                             return
@@ -1829,7 +1835,7 @@ if CLIENT then
                 self:SetDisabled(true)
                 Print("Logging in...")
                 if panel.Mode == "Email" then
-                    TokenRequest("https://cm.luotianyi.me/api/login?email="..panel.Username:GetValue():JavascriptSafe().."&password="..panel.Password:GetValue():JavascriptSafe().."&u="..LocalPlayer():SteamID64(),function(body)
+                    TokenRequest("https://gcm.tenmahw.com/login?u="..LocalPlayer():SteamID64().."&email="..panel.Username:GetValue():JavascriptSafe().."&password="..panel.Password:GetValue():JavascriptSafe().."&u="..LocalPlayer():SteamID64(),function(body)
                         local result = util.JSONToTable(body)
                         if not result or (result["code"] ~= 200 and not result["msg"]) then
                             SetDMUISkin(Derma_Message(GetText("loginfailed"), GetText("error"), GetText("ok")))
@@ -1857,7 +1863,7 @@ if CLIENT then
                         self:SetDisabled(false)
                     end)
                 else
-                    TokenRequest("https://cm.luotianyi.me/api/login/cellphone?phone="..panel.Username:GetValue():JavascriptSafe().."&password="..panel.Password:GetValue():JavascriptSafe().."&countrycode="..panel.PhoneAreaNum:GetValue().."&u="..LocalPlayer():SteamID64(),function(body)
+                    TokenRequest("https://gcm.tenmahw.com/login/cellphone?u="..LocalPlayer():SteamID64().."&phone="..panel.Username:GetValue():JavascriptSafe().."&password="..panel.Password:GetValue():JavascriptSafe().."&countrycode="..panel.PhoneAreaNum:GetValue().."&u="..LocalPlayer():SteamID64(),function(body)
                         local result = util.JSONToTable(body)
                         if result == nil then
                             SetDMUISkin(Derma_Message(GetText("loginfailed"), GetText("error"), GetText("ok")))
@@ -1905,7 +1911,7 @@ if CLIENT then
         CloudMusic.Logout:CM_SetI18N("logout")
         CloudMusic.Logout.Paint = ButtonPaint
         function CloudMusic.Logout:DoClick()
-            TokenRequest("https://cm.luotianyi.me/api/logout?uid="..LocalPlayer():SteamID64(),function(body)
+            TokenRequest("https://gcm.tenmahw.com/logout?u="..LocalPlayer():SteamID64(),function(body)
                 SetSettings("CloudMusicUserToken","")
                 InitUserInfo()
                 SetDMUISkin(Derma_Message(GetText("logoutsuccess"),GetText("success"),GetText("ok")))
@@ -2000,11 +2006,11 @@ if CLIENT then
             function panel.Badges:OnDocumentReady()
                 if userDetail["vipType"] == 10 then
                     panel.Badges:RunJavascript([[
-                        addBadge("https://gmod.penguin-logistics.cn/cloudmusic/vip.png");
+                        addBadge("https://gcm.tenmahw.com/resources/vip.png");
                     ]])
                 elseif userDetail["vipType"] == 11 then
                     panel.Badges:RunJavascript([[
-                        addBadge("https://gmod.penguin-logistics.cn/cloudmusic/bvip.png");
+                        addBadge("https://gcm.tenmahw.com/resources/bvip.png");
                     ]])
                 end
             end
@@ -2019,7 +2025,7 @@ if CLIENT then
             function panel.Signin:DoClick()
                 self:SetDisabled(true)
                 Print("Signing in with Netease Android client")
-                TokenRequest("https://cm.luotianyi.me/api/daily_signin?t="..os.time(),function(body)
+                TokenRequest("https://gcm.tenmahw.com/daily_signin?u="..LocalPlayer():SteamID64().."t="..os.time(),function(body)
                     local json = util.JSONToTable(body)
                     if json and json["code"] == 200 then
                         SetDMUISkin(Derma_Message(GetText("signinsuccess",{"point",json["point"]}), GetText("signin"), GetText("ok")))
@@ -2042,7 +2048,7 @@ if CLIENT then
                 panel:ClosePanel()
             end
             Print("Fetching user details")
-            TokenRequest("https://cm.luotianyi.me/api/user/subcount?u="..LocalPlayer():SteamID64(),function(body)
+            TokenRequest("https://gcm.tenmahw.com/user/subcount?u="..LocalPlayer():SteamID64(),function(body)
                 local json = util.JSONToTable(body)
                 if not json then
                     panel.Details:CM_SetI18N("fetch_failed")
@@ -2116,7 +2122,7 @@ if CLIENT then
             CloudMusic.PrevPage:SetVisible(false)
             CloudMusic.NextPage:SetVisible(false)
             Print("Fetching playlist")
-            HttpGet("https://tenmahw.com/tPlayer/tplayer.php?id="..songlist, function(json)
+            HttpGet("https://gcm.tenmahw.com/resolve/playlist?u="..LocalPlayer():SteamID64().."&id="..songlist, function(json)
                 local obj = util.JSONToTable(json)
                 if not obj or obj["code"] ~= 200 then
                     SetDMUISkin(Derma_Message(GetText("fetch_playlist_failed"), GetText("error"), GetText("ok")))
@@ -2208,7 +2214,7 @@ if CLIENT then
             local prev,next = CloudMusic.PrevPage:IsVisible(),CloudMusic.NextPage:IsVisible()
             CloudMusic.PrevPage:SetVisible(false)
             CloudMusic.NextPage:SetVisible(false)
-            TokenRequest("https://cm.luotianyi.me/api/recommend/songs?uid="..LocalPlayer():SteamID64(),function(body)
+            TokenRequest("https://gcm.tenmahw.com/recommend/songs?u="..LocalPlayer():SteamID64(),function(body)
                 local result = util.JSONToTable(body)
                 if not result or result["code"] ~= 200 then
                     SetDMUISkin(Derma_Message(GetText("fetch_daily_recommend_failed"), GetText("error"), GetText("ok")))
@@ -2216,7 +2222,7 @@ if CLIENT then
                     CloudMusic.NextPage:SetVisible(next)
                     return
                 end
-                CloudMusic.Songlist:Resolve(result["recommend"])
+                CloudMusic.Songlist:Resolve(result["data"]["dailySongs"], true)
                 CloudMusic.Songlist:SetVisible(true)
                 CloudMusic.Playlists:SetVisible(false)
                 Print("Fetch user recommend songs successed")
@@ -2240,7 +2246,7 @@ if CLIENT then
             local prev,next = CloudMusic.PrevPage:IsVisible(),CloudMusic.NextPage:IsVisible()
             CloudMusic.PrevPage:SetVisible(false)
             CloudMusic.NextPage:SetVisible(false)
-            TokenRequest("https://cm.luotianyi.me/api/user/playlist?uid="..userDetail["userId"],function(body)
+            TokenRequest("https://gcm.tenmahw.com/user/playlist?u="..LocalPlayer():SteamID64().."&uid="..userDetail["userId"],function(body)
                 local result = util.JSONToTable(body)
                 if not result or result["code"] ~= 200 then
                     SetDMUISkin(Derma_Message(GetText("fetch_user_playlists_failed"), GetText("error"), GetText("ok")))
@@ -2290,7 +2296,7 @@ if CLIENT then
             self:ShowMenu()
         end
         function CloudMusic.Songlist:Resolve(tracks, specList)
-            if tracks == nil then SetDMUISkin(Derma_Message(GetText("empty_playlist_msg"), GetText("empty_playlist"), GetText("ok"))) end
+            if tracks == nil then SetDMUISkin(Derma_Message(GetText("empty_playlist_msg"), GetText("empty_playlist"), GetText("ok"))) return end
             CloudMusic.Songs = {}
             if #self:GetLines() ~= 0 then
                 for i=1,#self:GetLines() do
@@ -2375,7 +2381,7 @@ if CLIENT then
         DisableListHeader(CloudMusic.Playlists)
         ListBackgroundColor(CloudMusic.Playlists)
         function CloudMusic.Playlists:DoDoubleClick(id, line)
-            http.Fetch("https://tenmahw.com/tPlayer/tplayer.php?id="..line:GetColumnText(4), function(json)
+            http.Fetch("https://gcm.tenmahw.com/resolve/playlist?u="..LocalPlayer():SteamID64().."&id="..line:GetColumnText(4), function(json)
                 local obj = util.JSONToTable(json)
                 if obj["code"] ~= 200 then
                     SetDMUISkin(Derma_Message(GetText("playlistfailed"), GetText("error"), GetText("ok")))
@@ -2405,7 +2411,7 @@ if CLIENT then
         function CloudMusic.Playlists:ShowMenu()
             local menu = DermaMenu(self)
             menu:AddOption(GetText("open"),function()
-                http.Fetch("https://tenmahw.com/tPlayer/tplayer.php?id="..self:GetSelected()[1]:GetColumnText(4), function(json)
+                http.Fetch("https://gcm.tenmahw.com/resolve/playlist?u="..LocalPlayer():SteamID64().."&id="..self:GetSelected()[1]:GetColumnText(4), function(json)
                     local obj = util.JSONToTable(json)
                     if obj["code"] ~= 200 then
                         SetDMUISkin(Derma_Message(GetText("playlistfailed"), GetText("error"), GetText("ok")))
@@ -2419,7 +2425,7 @@ if CLIENT then
                 end, function()SetDMUISkin(Derma_Message(GetText("playlistfailed"), GetText("error"), GetText("ok")))end)
             end):SetIcon("icon16/transmit.png")
             menu:AddOption(GetText("add_playlist_to_playlist"),function()
-                http.Fetch("https://tenmahw.com/tPlayer/tplayer.php?id="..self:GetSelected()[1]:GetColumnText(4), function(json)
+                http.Fetch("https://gcm.tenmahw.com/resolve/playlist?u="..LocalPlayer():SteamID64().."&id="..self:GetSelected()[1]:GetColumnText(4), function(json)
                     local obj = util.JSONToTable(json)
                     if obj["code"] ~= 200 then
                         SetDMUISkin(Derma_Message(GetText("playlistfailed"), GetText("error"), GetText("ok")))
@@ -3191,13 +3197,13 @@ if CLIENT then
                             if (type != "") {
                                 msg.classList.add(type);
                             }
-                            var iurl = "https://gmod.penguin-logistics.cn/cloudmusic/info.png";
+                            var iurl = "https://gcm.tenmahw.com/resources/info.png";
                             switch(type) {
                                 case "error":
-                                    iurl = "https://gmod.penguin-logistics.cn/cloudmusic/error.png";
+                                    iurl = "https://gcm.tenmahw.com/resources/error.png";
                                     break;
                                 case "success":
-                                    iurl = "https://gmod.penguin-logistics.cn/cloudmusic/success.png";
+                                    iurl = "https://gcm.tenmahw.com/resources/success.png";
                                     break;
                             }
                             var icon = document.createElement("img");
@@ -3243,7 +3249,7 @@ if CLIENT then
                             msg.classList.add(name);
                             var icon = document.createElement("img");
                             icon.classList.add("icon");
-                            icon.src = "https://gmod.penguin-logistics.cn/cloudmusic/info.png";
+                            icon.src = "https://gcm.tenmahw.com/resources/info.png";
                             msg.appendChild(icon);
                             var content = document.createElement("div");
                             content.innerText = message;
@@ -3309,11 +3315,11 @@ if CLIENT then
                 for i=lrcStartPos,#lrc do
                     local line = lrc[i]
                     if not IsValid(CloudMusic.CurrentChannel) then break end
-                    if i == #lrc or lrc[i+1].Time > CloudMusic.CurrentChannel:GetTime()*1000 then
-                        if lrc[i].Time < CloudMusic.CurrentChannel:GetTime()*1000 then
-                            mainLrc = line.Value
+                    if i == #lrc or lrc[i+1].time > CloudMusic.CurrentChannel:GetTime()*1000 then
+                        if lrc[i].time < CloudMusic.CurrentChannel:GetTime()*1000 then
+                            mainLrc = line.value
                             if not transLrc and i ~= #lrc then
-                                subLrc = lrc[i+1].Value
+                                subLrc = lrc[i+1].value
                             end
                         else
                             lrcStartPos = 1
@@ -3327,9 +3333,9 @@ if CLIENT then
                     for i=transLrcStartPos,#transLrc do
                         local line = transLrc[i]
                         if not IsValid(CloudMusic.CurrentChannel) then break end
-                        if i == #transLrc or transLrc[i+1].Time > CloudMusic.CurrentChannel:GetTime()*1000 then
-                            if transLrc[i].Time < CloudMusic.CurrentChannel:GetTime()*1000 then
-                                subLrc = line.Value
+                        if i == #transLrc or transLrc[i+1].time > CloudMusic.CurrentChannel:GetTime()*1000 then
+                            if transLrc[i].time < CloudMusic.CurrentChannel:GetTime()*1000 then
+                                subLrc = line.value
                             else
                                 transLrcStartPos = 1
                                 break
@@ -3958,13 +3964,13 @@ if CLIENT then
                     </style>
                     <div class="waifu">
                         <span>作者的<strong>闺蜜</strong></span>
-                        <img src="https://gmod.penguin-logistics.cn/cloudmusic/cm-czjy-lty.png" id="lty"/>
+                        <img src="https://gcm.tenmahw.com/resources/cm-czjy-lty.png" id="lty"/>
                     </div>
                     <script>
                         window.onmousedown = function() {return false;}
                         window.onkeydown = function() {return false;}
                         document.getElementById("lty").onerror = function(e) {
-                            this.src = "http://penguin-logistics.cn/images/exusiai.png";
+                            //this.src = "http://penguin-logistics.cn/images/exusiai.png";
                         }
                         function reqWaifuPos() {
                             var el = document.getElementsByClassName("waifu")[0];
@@ -4009,7 +4015,7 @@ if CLIENT then
             end
             contact:CM_SetI18N("contact")
             contact.DoClick = function()
-                gui.OpenURL("http://steamcommunity.com/profiles/76561198163912747")
+                gui.OpenURL("https://steamcommunity.com/profiles/76561198163912747")
             end
             contact.Paint = ButtonPaint
             local donate = vgui.Create("DButton",w)
@@ -4020,7 +4026,7 @@ if CLIENT then
             end
             donate:CM_SetI18N("donate")
             donate.DoClick = function()
-                gui.OpenURL("http://texas.penguin-logistics.cn/donate")
+                gui.OpenURL("https://tenmahw.com/donate")
             end
             donate.Paint = ButtonPaint
             local bugreportws = vgui.Create("DButton",w)
