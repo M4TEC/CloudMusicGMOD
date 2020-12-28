@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1.5.0 Beta 20200816 (With 20201226 FIX)" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1st Gen Final 20201228" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -295,7 +295,7 @@ if CLIENT then
             ["ui_color"] = "視窗顏色",
             ["player_list"] = "玩家列表",
             ["custom_css"] = "自訂HUD CSS",
-            ["description"] = "本播放器Texas製作，使用了独立伺服器进行档案处理，由TLExpress翻譯",
+            ["description"] = "本播放器Texas製作，使用了獨立伺服器進行檔案處理，由TLExpress翻譯",
             ["advice"] = "建議將遊戲解析度設定為1366x768或以上",
             ["lyric_size"] = "歌詞大小",
             ["player_name"] = "玩家名稱",
@@ -347,8 +347,8 @@ if CLIENT then
             ["verbose_help"] = "啟用網易雲播放器囉嗦模式",
             ["reinit"] = "重新初始化",
             ["sure_to_reinit"] = "確定重新初始化嗎？",
-            ["bug_report_workshop"] = "在Steam创意工坊反馈",
-            ["bug_report_github"] = "在GitHub反馈"
+            ["bug_report_workshop"] = "在Steam創意工坊反饋",
+            ["bug_report_github"] = "在GitHub反饋"
         },
         ["en"] = {
             ["title"] = "Netease Cloud Music",
@@ -674,7 +674,7 @@ if CLIENT then
         local channelPlayers = {}
         local animationTime = 0.3 -- in seconds
         local lastShortcutKeyTime = 0
-        Print("Variables set up")
+        Print("Variables has been set up")
         local I18N_TEXT = 0
         local I18N_PLACEHOLDER = 1
         local I18N_VALUE = 2
@@ -699,9 +699,9 @@ if CLIENT then
                 end
             end
         end
-        vgui.__oldCreate = vgui.__oldCreate or vgui.Create
+        vgui.__CM_oldCreate = vgui.__CM_oldCreate or vgui.Create
         function vgui.Create(...)
-            local r = vgui.__oldCreate(...)
+            local r = vgui.__CM_oldCreate(...)
             if not r then return nil end
             function r:CM_SetI18N(strname,type)
                 if self.I18Name == strname and self.I18NType == (type or I18N_TEXT) then return end
@@ -711,6 +711,15 @@ if CLIENT then
                 self.I18Name = strname
                 self.I18NType = type or I18N_TEXT
                 LanguageUpdate()
+                if self.OnRemove then
+                    self.__CM_oldOnRemove = self.OnRemove
+                end
+                function self:OnRemove()
+                    table.RemoveByValue(I18N_LIST,self)
+                    if self.__CM_oldOnRemove then
+                        self:__CM_oldOnRemove()
+                    end
+                end
             end
             function r:CM_RemoveI18N()
                 table.RemoveByValue(I18N_LIST, self)
@@ -767,12 +776,9 @@ if CLIENT then
                 panel.IsTooltip = true
                 self.TooltipPanel = panel
             end
-            function r:OnRemove()
-                table.RemoveByValue(I18N_LIST,self)
-            end
             return r
         end
-        Print("Multi-language ready")
+        Print("Multi-language is ready")
         surface.CreateFont("CloudMusicTitle", {
             font = "Microsoft YaHei",
             extended = true,
@@ -858,7 +864,7 @@ if CLIENT then
             additive = false,
             outline = false,
         })
-        Print("Fonts created")
+        Print("Fonts has been created")
         local IMAGE = {}
         function IMAGE:Init()
             self.m_HTML = vgui.Create("DHTML", self)
@@ -897,7 +903,7 @@ if CLIENT then
         function LISTVIEW:AddColumn(name)
 
         end
-        Print("Panels ready")
+        Print("Panels are ready")
         local function CreateImage(url,width,height,parent)
             width = width or 32
             height = height or 32
@@ -958,7 +964,7 @@ if CLIENT then
                 if CloudMusic.CurrentPlaying == nil or currentPlaying.ID ~= CloudMusic.CurrentPlaying.ID then return end
                 lrc = json["lyric"]["lrc"]
                 transLrc = json["lyric"]["tlrc"]
-                Print("Fetch lyric successed")
+                Print("Fetching lyric successed")
             end, function()AddMessage(GetText("lyricfailed",{"name",currentPlaying.Name}),nil,3000,"error")end)
         end
         local function SongEnded()
@@ -996,7 +1002,7 @@ if CLIENT then
             AddMessage(GetText("playerror",{"name",CloudMusic.CurrentPlaying.Name}),nil,3000,"error")
             if errorCount == 5 then
                 AddMessage(GetText("continue_error"))
-                Print("Play error count reached 5, stop trying")
+                Print("Error count has reached 5, stop trying")
                 errorCount = 0
                 return
             end
@@ -1335,7 +1341,7 @@ if CLIENT then
                         return
                     elseif userDetail["code"] == 301 then
                         CloudMusic.Login:SetVisible(true)
-                        Print("User login token is invalid, using default layout and clearing user token")
+                        Print("User login token is invalid, using default layout and clear user token")
                         SetSettings("CloudMusicUserToken","")
                         return
                     end
@@ -1454,7 +1460,7 @@ if CLIENT then
                             return
                         end
                         userDetail = json["profile"]
-                        Print("Successfully fetch user details")
+                        Print("Fetch user details successfully")
                         hook.Call("CloudMusicUserDetailInfo")
                     end)
                     hook.Run("CloudMusicUserInfo",userDetail)
@@ -1849,7 +1855,7 @@ if CLIENT then
                         SetDMUISkin(Derma_Message(GetText("loginsuccess",{"name",result["profile"]["nickname"]}), GetText("welcome"), GetText("ok")))
                         InitUserInfo()
                         HideOverlay()
-                        Print("User logged in")
+                        Print("User has logged in")
                         panel:Remove()
                     end,function()
                         SetDMUISkin(Derma_Message(GetText("loginfailed"), GetText("error"), GetText("ok")))
@@ -1877,7 +1883,7 @@ if CLIENT then
                         SetDMUISkin(Derma_Message(GetText("loginsuccess",{"name",result["profile"]["nickname"]}), GetText("welcome"), GetText("ok")))
                         InitUserInfo()
                         HideOverlay()
-                        Print("User logged in")
+                        Print("User has logged in")
                         panel:Remove()
                     end,function()
                         SetDMUISkin(Derma_Message(GetText("loginfailed"), GetText("error"), GetText("ok")))
@@ -1915,7 +1921,7 @@ if CLIENT then
                 SetSettings("CloudMusicUserToken","")
                 InitUserInfo()
                 SetDMUISkin(Derma_Message(GetText("logoutsuccess"),GetText("success"),GetText("ok")))
-                Print("User logged out")
+                Print("User has logged out")
             end,function()
                 SetDMUISkin(Derma_Message(GetText("logoutfailed"),GetText("error"),GetText("ok")))
                 Print("Failed to log out")
@@ -2032,7 +2038,7 @@ if CLIENT then
                     else
                         SetDMUISkin(Derma_Message(json["msg"], GetText("signin"), GetText("ok")))
                     end
-                    Print("Sign in successed")
+                    Print("Sign in successfully")
                 end,function()
                     SetDMUISkin(Derma_Message(GetText("signinfailed"), GetText("signin"), GetText("ok")))
                     Print("Failed to sign in")
@@ -2055,7 +2061,7 @@ if CLIENT then
                     return
                 end
                 if json["code"] == 200 and IsValid(panel) then
-                    Print("Fetch user details successed")
+                    Print("Fetch user details successfully")
                     panel.Details.I18NParams = {
                         ["djRadioCount"] = json["djRadioCount"],
                         ["mvCount"] = json["mvCount"],
@@ -2135,7 +2141,7 @@ if CLIENT then
                 CloudMusic.Songlist:Resolve(obj["playlist"]["tracks"], true)
                 CloudMusic.Songlist:SetVisible(true)
                 CloudMusic.Playlists:SetVisible(false)
-                Print("Fetch playlist successed")
+                Print("Fetch playlist successfully")
             end, function()SetDMUISkin(Derma_Message(GetText("fetch_playlist_failed"), GetText("error"), GetText("ok")))end,nil,function()
                 SetTopFormsDisabled(false)
             end)
@@ -2163,7 +2169,7 @@ if CLIENT then
         CloudMusic.SearchForm.Search:CM_SetI18N("search")
         CloudMusic.SearchForm.Search.DoClick = function()
             SetTopFormsDisabled(true)
-            Print("Searching songs")
+            Print("Search songs with "..CloudMusic.SearchForm.Input:GetValue())
             local prev,next = CloudMusic.PrevPage:IsVisible(),CloudMusic.NextPage:IsVisible()
             CloudMusic.PrevPage:SetVisible(false)
             CloudMusic.NextPage:SetVisible(false)
@@ -2194,7 +2200,7 @@ if CLIENT then
                 CloudMusic.Songlist:Resolve(json["result"]["songs"])
                 CloudMusic.Songlist:SetVisible(true)
                 CloudMusic.Playlists:SetVisible(false)
-                Print("Search successed")
+                Print("Search successfully")
             end, function()SetDMUISkin(Derma_Message(GetText("search_failed"), GetText("error"), GetText("ok"))) end,nil,function()
                 SetTopFormsDisabled(false)
             end)
@@ -2225,7 +2231,7 @@ if CLIENT then
                 CloudMusic.Songlist:Resolve(result["data"]["dailySongs"], true)
                 CloudMusic.Songlist:SetVisible(true)
                 CloudMusic.Playlists:SetVisible(false)
-                Print("Fetch user recommend songs successed")
+                Print("Fetch user recommend songs successfully")
             end,function()
                 SetDMUISkin(Derma_Message(GetText("fetch_daily_recommend_failed"), GetText("error"), GetText("ok")))
             end,function()
@@ -2257,7 +2263,7 @@ if CLIENT then
                 CloudMusic.Playlists:Resolve(result["playlist"])
                 CloudMusic.Songlist:SetVisible(false)
                 CloudMusic.Playlists:SetVisible(true)
-                Print("Fetch user playlists successed")
+                Print("Fetch user playlists successfully")
             end,function()
                 SetDMUISkin(Derma_Message(GetText("fetch_user_playlists_failed"), GetText("error"), GetText("ok")))
             end,function()
@@ -2650,7 +2656,7 @@ if CLIENT then
             Print("Try to play "..self.CurrentPlaying.Name.." - "..self.CurrentPlaying.Artist)
             AddProgress("CloudMusicBuffering",self.CurrentPlaying.Name.." - "..self.CurrentPlaying.Artist,GetText("try_play"))
             GetSongURL(cId,function(url)
-                Print("Fetch song url successed")
+                Print("Fetch song url successfully")
                 sound.PlayURL(url, "noblock noplay", function(station,errid,errname)
                     buffering = false
                     RemoveProgress("CloudMusicBuffering")
@@ -3303,7 +3309,7 @@ if CLIENT then
                 setTextShadow(]]..(GetSettings("CloudMusicHUDTextShadow") and "true" or "false")..[[);
             ]])
             hook.Run("CloudMusicHUDReady")
-            Print("HUD ready")
+            Print("HUD is ready")
         end
         function CloudMusic.HUD:OnScreenSizeChanged()
             self:SetSize(ScrW(),ScrH())
@@ -3484,13 +3490,13 @@ if CLIENT then
                 net.SendToServer()
             end
         end,function(val)
-            if ULib ~= nil and not ULib.ucl.query(LocalPlayer(),"cloudmusic3d") and val then
+            if ULib and not ULib.ucl.query(LocalPlayer(),"cloudmusic3d") and val then
                 SetDMUISkin(Derma_Message(GetText("3dplay_no_perm"), GetText("no_perm"), GetText("ok")))
                 return false
             end
         end)
         function a3dopt:Think()
-            if ULib ~= nil and not ULib.ucl.query(LocalPlayer(),"cloudmusic3d") and self:GetChecked() then
+            if ULib and not ULib.ucl.query(LocalPlayer(),"cloudmusic3d") and self:GetChecked() then
                 self:SetChecked(false)
                 net.Start("CloudMusic3DSync")
                 net.WriteEntity(LocalPlayer())
@@ -3502,7 +3508,7 @@ if CLIENT then
                 net.SendToServer()
             end
         end
-        if ULib == nil or ULib.ucl.query(LocalPlayer(),"cloudmusic3d") then
+        if not ULib or ULib.ucl.query(LocalPlayer(),"cloudmusic3d") then
             a3dopt:SetChecked(GetSettings("CloudMusic3D"))
         else
             a3dopt:SetChecked(false)
@@ -4119,11 +4125,11 @@ if CLIENT then
         local didPlayerPaused = false
         CloudMusic.Util = {
             ["AddHUDCustomCSSRule"] = function(css)
-                Print("New CSS rule added to HUD")
+                Print("Added new CSS rule to HUD")
                 CloudMusic.HUD:RunJavascript("addCSS(\""..css:JavascriptSafe().."\");")
             end,
             ["ClearHUDCustomCSSRules"] = function()
-                Print("All HUD CSS rule removed")
+                Print("All HUD CSS rules are removed")
                 CloudMusic.HUD:RunJavascript("removeAllCSS()");
             end,
             ["SaveSession"] = function(name)
@@ -4165,7 +4171,7 @@ if CLIENT then
         }
         SetUISkin(CloudMusic)
         if file.Exists("materials/gwenskin/windows10.png", "GAME") then
-            Print("Derma skin file detected, using CloudMusic Derma skin")
+            Print("Derma skin file detected, using CloudMusic's Derma skin")
         end
         CloudMusic.Playlists:SetVisible(false)
         CloudMusic:SetAlpha(0)
@@ -4434,7 +4440,7 @@ if SERVER then
         local volume = net.ReadFloat()
         local id = net.ReadString()
         local time = net.ReadFloat()
-        if ULib ~= nil and not ULib.ucl.query(ply,"cloudmusic3d") and valid then return end
+        if ULib and not ULib.ucl.query(ply,"cloudmusic3d") and valid then return end
         if volume > 1 then volume = 1 end
         net.Start("CloudMusic3DSync")
         net.WriteEntity(ply)
