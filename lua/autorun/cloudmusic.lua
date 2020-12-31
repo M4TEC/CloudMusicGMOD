@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1st Gen Final 20201228" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1st Gen Final 20210101" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -712,7 +712,7 @@ if CLIENT then
                 self.I18NType = type or I18N_TEXT
                 LanguageUpdate()
                 if self.OnRemove then
-                    self.__CM_oldOnRemove = self.OnRemove
+                    self.__CM_oldOnRemove = self.__CM_oldOnRemove or self.OnRemove
                 end
                 function self:OnRemove()
                     table.RemoveByValue(I18N_LIST,self)
