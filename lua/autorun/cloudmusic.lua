@@ -7,7 +7,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1st Gen Final 20210101" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1st Gen Final 20210209" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -703,23 +703,14 @@ if CLIENT then
         function vgui.Create(...)
             local r = vgui.__CM_oldCreate(...)
             if not r then return nil end
-            function r:CM_SetI18N(strname,type)
-                if self.I18Name == strname and self.I18NType == (type or I18N_TEXT) then return end
+            function r:CM_SetI18N(strname,str_type)
+                if self.I18Name == strname and self.I18NType == (str_type or I18N_TEXT) then return end
                 if not table.HasValue(I18N_LIST,self) then
                     table.insert(I18N_LIST,self)
                 end
                 self.I18Name = strname
-                self.I18NType = type or I18N_TEXT
+                self.I18NType = str_type or I18N_TEXT
                 LanguageUpdate()
-                if self.OnRemove then
-                    self.__CM_oldOnRemove = self.__CM_oldOnRemove or self.OnRemove
-                end
-                function self:OnRemove()
-                    table.RemoveByValue(I18N_LIST,self)
-                    if self.__CM_oldOnRemove then
-                        self:__CM_oldOnRemove()
-                    end
-                end
             end
             function r:CM_RemoveI18N()
                 table.RemoveByValue(I18N_LIST, self)
@@ -1333,7 +1324,7 @@ if CLIENT then
             else
                 Print("User token detected, try to fetch user info")
                 TokenRequest("https://gcm.tenmahw.com/login/status?u="..LocalPlayer():SteamID64().."&t="..os.time(),function(body)
-                    userDetail = util.JSONToTable(body)
+                    userDetail = util.JSONToTable(body)["data"]
                     if userDetail == nil or (userDetail["code"] ~= 200 and userDetail["code"] ~= 301) then
                         AddMessage(GetText("userinfofailed"),nil,3000,"error")
                         CloudMusic.Login:SetVisible(true)
