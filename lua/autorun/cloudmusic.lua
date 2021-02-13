@@ -1,3 +1,9 @@
+include "autorun/sh_cami.lua"
+CAMI.RegisterPrivilege({
+    Name = "cloudmusic 3dplay",
+    MinAccess = "user",
+    Description = "允许玩家通过网易云音乐外放"
+})
 CM_STATUS_NON_INFO = -1
 CM_STATUS_PLAYING = 0
 CM_STATUS_PAUSE = 1
@@ -7,7 +13,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1st Gen Final 20210209" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1st Gen Final 20210213" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -3481,13 +3487,13 @@ if CLIENT then
                 net.SendToServer()
             end
         end,function(val)
-            if ULib and not ULib.ucl.query(LocalPlayer(),"cloudmusic3d") and val then
+            if not CAMI.PlayerHasAccess(LocalPlayer(), "cloudmusic 3dplay") and val then
                 SetDMUISkin(Derma_Message(GetText("3dplay_no_perm"), GetText("no_perm"), GetText("ok")))
                 return false
             end
         end)
         function a3dopt:Think()
-            if ULib and not ULib.ucl.query(LocalPlayer(),"cloudmusic3d") and self:GetChecked() then
+            if not CAMI.PlayerHasAccess(LocalPlayer(), "cloudmusic 3dplay") and self:GetChecked() then
                 self:SetChecked(false)
                 net.Start("CloudMusic3DSync")
                 net.WriteEntity(LocalPlayer())
@@ -3499,7 +3505,7 @@ if CLIENT then
                 net.SendToServer()
             end
         end
-        if not ULib or ULib.ucl.query(LocalPlayer(),"cloudmusic3d") then
+        if CAMI.PlayerHasAccess(LocalPlayer(), "cloudmusic 3dplay") then
             a3dopt:SetChecked(GetSettings("CloudMusic3D"))
         else
             a3dopt:SetChecked(false)
@@ -4393,10 +4399,6 @@ if SERVER then
         util.AddNetworkString("CloudMusicInfo")
         util.AddNetworkString("CloudMusicReqInfo")
         util.AddNetworkString("CloudMusicDisconnect")
-        if not CloudMusicRegisteredULib and ULib ~= nil then
-            CloudMusicRegisteredULib = true
-            ULib.ucl.registerAccess("cloudmusic3d","user","允许玩家使用3D外放功能","网易云音乐")
-        end
         Print("Serverside CloudMusic initialized!")
     end
     local lastReqInfoTime = 0
@@ -4431,7 +4433,7 @@ if SERVER then
         local volume = net.ReadFloat()
         local id = net.ReadString()
         local time = net.ReadFloat()
-        if ULib and not ULib.ucl.query(ply,"cloudmusic3d") and valid then return end
+        if not CAMI.PlayerHasAccess(ply, "cloudmusic 3dplay") and valid then return end
         if volume > 1 then volume = 1 end
         net.Start("CloudMusic3DSync")
         net.WriteEntity(ply)
