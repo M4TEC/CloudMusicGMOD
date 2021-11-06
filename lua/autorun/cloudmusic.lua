@@ -13,7 +13,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1st Gen Final 20210424" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1st Gen Final 20211106" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -69,7 +69,7 @@ if CLIENT then
             ["settings"] = "设置",
             ["playlist_id"] = "歌单ID",
             ["wrong_playlist_id"] = "请输入正确的歌单ID",
-            ["fetch_playlist_failed"] = "获取歌单失败",
+            ["fetch_playlist_failed"] = "获取歌单失败，可尝试登录后再获取",
             ["search_song"] = "搜索歌曲",
             ["search_failed"] = "搜索失败",
             ["searchresult"] = "搜索到 %count% 首歌曲",
@@ -238,7 +238,7 @@ if CLIENT then
             ["settings"] = "設定",
             ["playlist_id"] = "播放清單ID",
             ["wrong_playlist_id"] = "請輸入正確的播放清單ID",
-            ["fetch_playlist_failed"] = "取得播放清單失敗",
+            ["fetch_playlist_failed"] = "取得播放清單失敗，可登錄后再嘗試",
             ["search_song"] = "搜尋歌曲",
             ["search_failed"] = "搜尋失敗",
             ["searchresult"] = "搜尋到 %count% 首歌曲",
@@ -407,7 +407,7 @@ if CLIENT then
             ["settings"] = "Settings",
             ["playlist_id"] = "Playlist ID",
             ["wrong_playlist_id"] = "Please input correct playlist ID",
-            ["fetch_playlist_failed"] = "Failed to fetch playlist",
+            ["fetch_playlist_failed"] = "Failed to fetch playlist, try again after log in",
             ["search_song"] = "Search song",
             ["search_failed"] = "Search failed",
             ["searchresult"] = "Found %count% songs",
@@ -1048,13 +1048,25 @@ if CLIENT then
             net.WriteString(CloudMusic.CurrentPlaying == nil and "" or CloudMusic.CurrentPlaying.Thumbnail)
             net.SendToServer()
         end
+        local function URLEncode(s)
+            s = string.gsub(s, "([^%w%.%- ])", function(c) return string.format("%%%02X", string.byte(c)) end)
+            return string.gsub(s, " ", "+")
+        end
+        local function TranslateTableIntoQueryParameter(tbl)
+            local str = ""
+            for i,v in pairs(tbl) do
+                if str ~= "" then str = str .. "&" end
+                str = str .. URLEncode(i) .. "=" .. URLEncode(v)
+            end
+            return str
+        end
         local function TokenRequest(url,callback,fail,finally,method,data)
             if method == nil then method = "GET" end
             local headers = GetSettings("CloudMusicUserToken") == "" and {} or {
                 ["Cookie"] = "MUSIC_U="..GetSettings("CloudMusicUserToken")
             }
             if method == "GET" then
-                http.Fetch(url,function(body)
+                http.Fetch(url .. (data == nil and "" or ("?" .. TranslateTableIntoQueryParameter(data))),function(body)
                     if type(callback) == "function" then
                         callback(body)
                     end
@@ -1331,7 +1343,7 @@ if CLIENT then
                 Print("User token detected, try to fetch user info")
                 TokenRequest("https://gcm.tenmahw.com/login/status?u="..LocalPlayer():SteamID64().."&t="..os.time(),function(body)
                     userDetail = util.JSONToTable(body)["data"]
-                    if userDetail == nil or userDetail["profile"] == nil or (userDetail["code"] ~= 200 and userDetail["code"] ~= 301) then
+                    if not userDetail or not userDetail["profile"] or (userDetail["code"] ~= 200 and userDetail["code"] ~= 301) then
                         AddMessage(GetText("userinfofailed"),nil,3000,"error")
                         CloudMusic.Login:SetVisible(true)
                         Print("Failed to fetch user info, using default layout")
@@ -1432,11 +1444,11 @@ if CLIENT then
                                             var vb = document.getElementsByClassName("vipBadge")[0];
                                             switch(type) {
                                                 case 10:
-                                                    vb.src = "https://gmod.penguin-logistics.cn/cloudmusic/vip.png";
+                                                    vb.src = "https://gcm.tenmahw.com/resources/vip.png";
                                                     vb.style.display = "inline-block";
                                                     break;
                                                 case 11:
-                                                    vb.src = "https://gmod.penguin-logistics.cn/cloudmusic/bvip.png";
+                                                    vb.src = "https://gcm.tenmahw.com/resources/bvip.png";
                                                     vb.style.display = "inline-block";
                                                     break;
                                                 default:
@@ -1559,6 +1571,17 @@ if CLIENT then
                 else
                     self:SetAlpha(255)
                 end
+               --[[if GetSettings("CloudMusicUsedSince") == nil then
+                    SetSettings("CloudMusicUsedSince", os.time())
+                elseif GetSettings("CloudMusicUsedSince") >= 604800 then
+                    local panel = CreateOverlayPanel(350,400)
+                    local label = vgui.Create("DLabel", panel)
+                    label:Dock(TOP)
+                    label:SetText("你好，你已经使用了本插件有一段时间了，如果你喜欢这个插件的话，希望你能去Steam创意工坊点赞以支持作者。")
+                    label:SetFont("CloudMusicText")
+                    local workshop = vgui.Create("DButton", panel)
+                    
+                end]]
             end
         end
         function CloudMusic:GetVersion()
@@ -1802,7 +1825,7 @@ if CLIENT then
             panel.Password:SetPos(10,100)
             panel.Password:SetSize(350-20,20)
             panel.Password:CM_SetI18N("password",I18N_PLACEHOLDER)
-            panel.Privacy = vgui.Create("DPanel", panel)
+            --[[panel.Privacy = vgui.Create("DPanel", panel)
             panel.Privacy:SetPos(10,125)
             panel.Privacy:SetSize(350-20,20)
             panel.Privacy.Select = vgui.Create("DCheckBox", panel.Privacy)
@@ -1820,7 +1843,7 @@ if CLIENT then
             panel.Privacy.Link:CM_SetI18N("privacy_policy")
             panel.Privacy.Link:SizeToContents()
             panel.Privacy.Link:SetColor(Color(6,72,255))
-            panel.Privacy.Link:SetURL("https://forum.m4tec.org/d/5-cloudmusic-for-garry-s-mod")
+            panel.Privacy.Link:SetURL("https://forum.m4tec.org/d/5-cloudmusic-for-garry-s-mod")]]
             panel.Login = vgui.Create("DButton",panel)
             panel.Login:SetPos(10,145)
             panel.Login:SetSize(350-20,20)
@@ -2125,7 +2148,7 @@ if CLIENT then
             CloudMusic.PrevPage:SetVisible(false)
             CloudMusic.NextPage:SetVisible(false)
             Print("Fetching playlist")
-            HttpGet("https://gcm.tenmahw.com/resolve/playlist?u="..LocalPlayer():SteamID64().."&id="..songlist, function(json)
+            TokenRequest("https://gcm.tenmahw.com/resolve/playlist?u="..LocalPlayer():SteamID64().."&id="..songlist, function(json)
                 local obj = util.JSONToTable(json)
                 if not obj or obj["code"] ~= 200 then
                     SetDMUISkin(Derma_Message(GetText("fetch_playlist_failed"), GetText("error"), GetText("ok")))
@@ -2139,7 +2162,7 @@ if CLIENT then
                 CloudMusic.Songlist:SetVisible(true)
                 CloudMusic.Playlists:SetVisible(false)
                 Print("Fetch playlist successfully")
-            end, function()SetDMUISkin(Derma_Message(GetText("fetch_playlist_failed"), GetText("error"), GetText("ok")))end,nil,function()
+            end, function()SetDMUISkin(Derma_Message(GetText("fetch_playlist_failed"), GetText("error"), GetText("ok")))end,function()
                 SetTopFormsDisabled(false)
             end)
         end
@@ -2170,16 +2193,13 @@ if CLIENT then
             local prev,next = CloudMusic.PrevPage:IsVisible(),CloudMusic.NextPage:IsVisible()
             CloudMusic.PrevPage:SetVisible(false)
             CloudMusic.NextPage:SetVisible(false)
-            HttpPost("http://music.163.com/api/search/pc", {
-                ["s"] = CloudMusic.SearchForm.Input:GetValue(),
-                ["type"] = "1",
-                ["limit"] = "100"
-            }, function(body)
+            TokenRequest("https://gcm.tenmahw.com/cloudsearch", function(body)
                 local json = util.JSONToTable(body)
                 if not json or json["code"] ~= 200 or json["result"]["songs"] == nil then
-                    SetDMUISkin(Derma_Message(GetText("search_failed"), GetText("error"), GetText("ok")))
+                    SetDMUISkin(Derma_Message(GetText("search_failed"), json["msg"] or GetText("error"), GetText("ok")))
                     CloudMusic.PrevPage:SetVisible(prev)
                     CloudMusic.NextPage:SetVisible(next)
+                    SetTopFormsDisabled(false)
                     return
                 end
                 TextMessage(GetText("searchresult",{"count",json["result"]["songCount"]}))
@@ -2194,13 +2214,17 @@ if CLIENT then
                 offset = 0
                 songCount = json["result"]["songCount"]
                 searchWord = CloudMusic.SearchForm.Input:GetValue()
-                CloudMusic.Songlist:Resolve(json["result"]["songs"])
+                CloudMusic.Songlist:Resolve(json["result"]["songs"], true)
                 CloudMusic.Songlist:SetVisible(true)
                 CloudMusic.Playlists:SetVisible(false)
                 Print("Search successfully")
-            end, function()SetDMUISkin(Derma_Message(GetText("search_failed"), GetText("error"), GetText("ok"))) end,nil,function()
+            end, function()SetDMUISkin(Derma_Message(GetText("search_failed"), GetText("error"), GetText("ok"))) end,function()
                 SetTopFormsDisabled(false)
-            end)
+            end, "GET", {
+                ["keywords"] = CloudMusic.SearchForm.Input:GetValue(),
+                ["type"] = "1",
+                ["limit"] = "100"
+            })
         end
         CloudMusic.SearchForm.Search.Paint = ButtonPaint
         CloudMusic.ShowRecommend = vgui.Create("DButton",CloudMusic.Body)
@@ -2307,22 +2331,27 @@ if CLIENT then
                 end
             end
             for i=1,#tracks do
+                local valid = true
                 local track = tracks[i]
                 local artist = ""
                 for j=1,#track[specList and "ar" or "artists"] do
                     if j ~= 1 then
                         artist = artist .. ", "
                     end
-                    artist = artist .. track[specList and "ar" or "artists"][j]["name"]
+                    local cArtist = track[specList and "ar" or "artists"][j]["name"]
+                    artist = artist .. (cArtist or "")
+                    if cArtist == nil then valid = false end
                 end
-                self:AddLine(track["name"],artist,track[specList and "al" or "album"]["name"],track["id"])
-                table.insert(CloudMusic.Songs,{
-                    Name = track["name"],
-                    Artist = artist,
-                    Album = track[specList and "al" or "album"]["name"],
-                    ID = track["id"],
-                    Thumbnail = track[specList and "al" or "album"]["picUrl"]
-                })
+                if valid then
+                    self:AddLine(track["name"],artist,track[specList and "al" or "album"]["name"],track["id"])
+                    table.insert(CloudMusic.Songs,{
+                        Name = track["name"],
+                        Artist = artist,
+                        Album = track[specList and "al" or "album"]["name"],
+                        ID = track["id"],
+                        Thumbnail = track[specList and "al" or "album"]["picUrl"]
+                    })
+                end
             end
             SetUISkin(self)
         end
@@ -2384,7 +2413,7 @@ if CLIENT then
         DisableListHeader(CloudMusic.Playlists)
         ListBackgroundColor(CloudMusic.Playlists)
         function CloudMusic.Playlists:DoDoubleClick(id, line)
-            http.Fetch("https://gcm.tenmahw.com/resolve/playlist?u="..LocalPlayer():SteamID64().."&id="..line:GetColumnText(4), function(json)
+            TokenRequest("https://gcm.tenmahw.com/resolve/playlist?u="..LocalPlayer():SteamID64().."&id="..line:GetColumnText(4), function(json)
                 local obj = util.JSONToTable(json)
                 if obj["code"] ~= 200 then
                     SetDMUISkin(Derma_Message(GetText("playlistfailed"), GetText("error"), GetText("ok")))
@@ -2414,7 +2443,7 @@ if CLIENT then
         function CloudMusic.Playlists:ShowMenu()
             local menu = DermaMenu(self)
             menu:AddOption(GetText("open"),function()
-                http.Fetch("https://gcm.tenmahw.com/resolve/playlist?u="..LocalPlayer():SteamID64().."&id="..self:GetSelected()[1]:GetColumnText(4), function(json)
+                TokenRequest("https://gcm.tenmahw.com/resolve/playlist?u="..LocalPlayer():SteamID64().."&id="..self:GetSelected()[1]:GetColumnText(4), function(json)
                     local obj = util.JSONToTable(json)
                     if obj["code"] ~= 200 then
                         SetDMUISkin(Derma_Message(GetText("playlistfailed"), GetText("error"), GetText("ok")))
@@ -2428,7 +2457,7 @@ if CLIENT then
                 end, function()SetDMUISkin(Derma_Message(GetText("playlistfailed"), GetText("error"), GetText("ok")))end)
             end):SetIcon("icon16/transmit.png")
             menu:AddOption(GetText("add_playlist_to_playlist"),function()
-                http.Fetch("https://gcm.tenmahw.com/resolve/playlist?u="..LocalPlayer():SteamID64().."&id="..self:GetSelected()[1]:GetColumnText(4), function(json)
+                TokenRequest("https://gcm.tenmahw.com/resolve/playlist?u="..LocalPlayer():SteamID64().."&id="..self:GetSelected()[1]:GetColumnText(4), function(json)
                     local obj = util.JSONToTable(json)
                     if obj["code"] ~= 200 then
                         SetDMUISkin(Derma_Message(GetText("playlistfailed"), GetText("error"), GetText("ok")))
@@ -2564,24 +2593,25 @@ if CLIENT then
         function CloudMusic.NextPage:DoClick()
             self:SetDisabled(true)
             if offset+100 > songCount then return end
-            HttpPost("http://music.163.com/api/search/pc", {
-                ["s"] = searchWord,
-                ["type"] = "1",
-                ["limit"] = "100",
-                ["offset"] = tostring(offset+100)
-            },function(body)
+            TokenRequest("https://gcm.tenmahw.com/cloudsearch",function(body)
                 local json = util.JSONToTable(body)
                 if not json or json["code"] ~= 200 or json["result"]["songs"] == nil then
-                    SetDMUISkin(Derma_Message(GetText("switch_page_failed"), GetText("error"), GetText("ok")))
+                    SetDMUISkin(Derma_Message(GetText("switch_page_failed"), json["msg"] or GetText("error"), GetText("ok")))
+                    self:SetDisabled(false)
                     return
                 end
                 CloudMusic.PrevPage:SetDisabled(false)
                 offset = offset + 100
                 if offset+100 > songCount then CloudMusic.NextPage:SetDisabled(true) end
-                CloudMusic.Songlist:Resolve(json["result"]["songs"])
-            end, function()SetDMUISkin(Derma_Message(GetText("switch_page_failed"), GetText("error"), GetText("ok"))) end,nil,function()
+                CloudMusic.Songlist:Resolve(json["result"]["songs"], true)
+            end, function()SetDMUISkin(Derma_Message(GetText("switch_page_failed"), GetText("error"), GetText("ok"))) end,function()
                 self:SetDisabled(false)
-            end)
+            end, "GET", {
+                ["keywords"] = searchWord,
+                ["type"] = "1",
+                ["limit"] = "100",
+                ["offset"] = tostring(offset+100)
+            })
         end
         CloudMusic.NextPage.Paint = ButtonPaint
         CloudMusic.PrevPage = vgui.Create("DButton",CloudMusic.Body)
@@ -2598,24 +2628,25 @@ if CLIENT then
         function CloudMusic.PrevPage:DoClick()
             self:SetDisabled(true)
             if offset == 0 then return end
-            HttpPost("http://music.163.com/api/search/pc", {
-                ["s"] = searchWord,
-                ["type"] = "1",
-                ["limit"] = "100",
-                ["offset"] = tostring(offset-100)
-            },function(body)
+            TokenRequest("https://gcm.tenmahw.com/cloudsearch",function(body)
                 local json = util.JSONToTable(body)
                 if not json or json["code"] ~= 200 or json["result"]["songs"] == nil then
-                    SetDMUISkin(Derma_Message(GetText("switch_page_failed"), GetText("error"), GetText("ok")))
+                    SetDMUISkin(Derma_Message(GetText("switch_page_failed"), json["msg"] or GetText("error"), GetText("ok")))
+                    self:SetDisabled(false)
                     return
                 end
                 CloudMusic.NextPage:SetDisabled(false)
                 offset = offset - 100
                 if offset == 0 then CloudMusic.PrevPage:SetDisabled(true) end
-                CloudMusic.Songlist:Resolve(json["result"]["songs"])
-            end, function()SetDMUISkin(Derma_Message(GetText("switch_page_failed"), GetText("error"), GetText("ok"))) end,nil,function()
+                CloudMusic.Songlist:Resolve(json["result"]["songs"], true)
+            end, function()SetDMUISkin(Derma_Message(GetText("switch_page_failed"), GetText("error"), GetText("ok"))) end,function()
                 self:SetDisabled(false)
-            end)
+            end, "GET", {
+                ["keywords"] = searchWord,
+                ["type"] = "1",
+                ["limit"] = "100",
+                ["offset"] = tostring(offset-100)
+            })
         end
         CloudMusic.PrevPage.Paint = ButtonPaint
         function CloudMusic:Play(song,callback)
@@ -3300,7 +3331,7 @@ if CLIENT then
                 setUnplayedColor(]]..progressUnplayed.r..[[,]]..progressUnplayed.g..[[,]]..progressUnplayed.b..[[);
                 setPlayedColor(]]..progressPlayed.r..[[,]]..progressPlayed.g..[[,]]..progressPlayed.b..[[)
                 setHudPos("]]..GetSettings("CloudMusicHudPos")..[[");
-                setCustomCSS("]]..GetSettings("CloudMusicHUDCustomCSS")..[[");
+                setCustomCSS("]]..GetSettings("CloudMusicHUDCustomCSS"):JavascriptSafe()..[[");
                 setLyricCentered(]]..(GetSettings("CloudMusicLyricCentered") and "true" or "false")..[[);
                 setLyricSize(]]..GetSettings("CloudMusicLyricSize")..[[);
                 setTextShadow(]]..(GetSettings("CloudMusicHUDTextShadow") and "true" or "false")..[[);
