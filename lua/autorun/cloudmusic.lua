@@ -13,7 +13,7 @@ local function Print(msg,color)
     if color == nil then color = DEF_COLOR end
     MsgC(DEF_COLOR,"[",Color(106,204,255),"CloudMusic",DEF_COLOR,"] ",color,msg,"\n")
 end
-local CLOUDMUSIC_VER = "1st Gen Final 20211106" -- DO NOT modify unless you know WHAT ARE YOU DOING
+local CLOUDMUSIC_VER = "1st Gen Final 20211119" -- DO NOT modify unless you know WHAT ARE YOU DOING
 if CLIENT then
     local LANGUAGES = {
         ["zh-CN"] = {
@@ -1849,14 +1849,14 @@ if CLIENT then
             panel.Login:SetSize(350-20,20)
             panel.Login:CM_SetI18N("login")
             function panel.Login:DoClick()
-                if not panel.Privacy.Select:GetChecked() then
+                --[[if not panel.Privacy.Select:GetChecked() then
                     SetDMUISkin(Derma_Message(GetText("privacy_policy_warn"),GetText("warning"),GetText("ok")))
                     return
-                end
+                end]]
                 panel.PhoneAreaNum:SetDisabled(true)
                 panel.Username:SetDisabled(true)
                 panel.Password:SetDisabled(true)
-                panel.Privacy.Select:SetDisabled(true)
+                --panel.Privacy.Select:SetDisabled(true)
                 panel.ToggleMode:SetDisabled(true)
                 self:SetDisabled(true)
                 Print("Logging in...")
@@ -1884,7 +1884,7 @@ if CLIENT then
                         panel.PhoneAreaNum:SetDisabled(false)
                         panel.Username:SetDisabled(false)
                         panel.Password:SetDisabled(false)
-                        panel.Privacy.Select:SetDisabled(false)
+                        --panel.Privacy.Select:SetDisabled(false)
                         panel.ToggleMode:SetDisabled(false)
                         self:SetDisabled(false)
                     end)
@@ -1912,7 +1912,7 @@ if CLIENT then
                         panel.PhoneAreaNum:SetDisabled(false)
                         panel.Username:SetDisabled(false)
                         panel.Password:SetDisabled(false)
-                        panel.Privacy.Select:SetDisabled(false)
+                        --panel.Privacy.Select:SetDisabled(false)
                         panel.ToggleMode:SetDisabled(false)
                         self:SetDisabled(false)
                     end)
